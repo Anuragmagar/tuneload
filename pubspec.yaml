@@ -44,9 +44,10 @@ dependencies:
   intl: ^0.19.0
   permission_handler: ^11.3.1
   text_scroll: ^0.2.0
-  # ffmpeg_kit_flutter_full_gpl: ^6.0.3
+  al_downloader: ^1.8.0
+  ffmpeg_kit_flutter_full_gpl: ^6.0.3
   # marquee: ^2.2.3
-  # metadata_god: ^0.5.2+1
+  metadata_god: ^0.5.2+1
 
 
 dev_dependencies:

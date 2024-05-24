@@ -4,15 +4,17 @@ import 'dart:typed_data';
 import 'dart:ui';
 // import 'package:background_downloader/background_downloader.dart';
 
-// import 'package:ffmpeg_kit_flutter_full_gpl/ffmpeg_kit.dart';
-// import 'package:ffmpeg_kit_flutter_full_gpl/ffmpeg_kit_config.dart';
-// import 'package:ffmpeg_kit_flutter_full_gpl/return_code.dart';
+import 'package:ffmpeg_kit_flutter_full_gpl/ffmpeg_kit.dart';
+import 'package:ffmpeg_kit_flutter_full_gpl/ffmpeg_kit_config.dart';
+import 'package:ffmpeg_kit_flutter_full_gpl/return_code.dart';
 // import 'package:flutter_downloader/flutter_downloader.dart';
 
+import 'package:al_downloader/al_downloader.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
+import 'package:metadata_god/metadata_god.dart';
 // import 'package:metadata_god/metadata_god.dart';
 import 'package:palette_generator/palette_generator.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -96,42 +98,41 @@ class _SongDetailPageState extends State<SongDetailPage> {
     var outputFile =
         "/storage/emulated/0/Download/TuneLoad/finalconversion.mp3";
 
-    // await FFmpegKit.execute(
-    //         '-i $inputFile -vn -c:a libmp3lame -ar 44100 -ac 2 -b:a 192k $outputFile')
-    //     .then((session) async {
-    //   final returnCode = await session.getReturnCode();
+    await FFmpegKit.execute(
+            '-i $inputFile -vn -c:a libmp3lame -ar 44100 -ac 2 -b:a 192k $outputFile')
+        .then((session) async {
+      final returnCode = await session.getReturnCode();
 
-    //   if (ReturnCode.isSuccess(returnCode)) {
-    //     print("Ffmpeg process completed with rc $returnCode");
+      if (ReturnCode.isSuccess(returnCode)) {
+        print("Ffmpeg process completed with rc $returnCode");
 
-    //     await MetadataGod.writeMetadata(
-    //       file: "/storage/emulated/0/Download/TuneLoad/finalconversion.mp3",
-    //       metadata: Metadata(
-    //         title: widget.item['name'],
-    //         artist: widget.artists,
-    //         album: widget.item['album']['name'],
-    //         albumArtist: widget.artists,
-    //         trackNumber: widget.item['track_number'],
-    //         trackTotal: widget.item['album']['total_tracks'],
-    //         discNumber: widget.item['disc_number'],
-    //         durationMs: double.parse(widget.item['duration_ms'].toString()),
-    //         year: int.parse(year),
-    //         picture: Picture(
-    //           data: imageBytes,
-    //           mimeType: "image/jpg",
-    //         ),
-    //       ),
-    //     );
-    //   } else if (ReturnCode.isCancel(returnCode)) {
-    //     // CANCEL
-    //   } else {
-    //     print("Error on codec");
-    //     FFmpegKitConfig.enableLogCallback((log) {
-    //       final message = log.getMessage();
-    //       print(message);
-    //     });
-    //   }
-    // });
+        await MetadataGod.writeMetadata(
+            file: "/storage/emulated/0/Download/TuneLoad/finalconversion.mp3",
+            metadata: Metadata(
+              title: widget.item['name'],
+              artist: widget.artists,
+              album: widget.item['album']['name'],
+              albumArtist: widget.artists,
+              trackNumber: widget.item['track_number'],
+              trackTotal: widget.item['album']['total_tracks'],
+              discNumber: widget.item['disc_number'],
+              durationMs: double.parse(widget.item['duration_ms'].toString()),
+              year: int.parse(year),
+              picture: Picture(
+                data: imageBytes,
+                mimeType: "image/jpg",
+              ),
+            ));
+      } else if (ReturnCode.isCancel(returnCode)) {
+        // CANCEL
+      } else {
+        print("Error on codec");
+        FFmpegKitConfig.enableLogCallback((log) {
+          final message = log.getMessage();
+          print(message);
+        });
+      }
+    });
   }
 
   downloadSong() async {
@@ -141,22 +142,45 @@ class _SongDetailPageState extends State<SongDetailPage> {
         await Permission.storage.request();
       }
       try {
-        final response = await http.post(
-          Uri.parse(
-              "https://c524-2405-acc0-1306-39d9-4d04-33ff-18e7-1d07.ngrok-free.app/"),
-          headers: {
-            "Content-Type": "application/x-www-form-urlencoded",
-          },
-          body: {
-            "song_url": widget.item['external_urls']['spotify'],
-          },
-        );
-        print(response.body);
+        // final response = await http.post(
+        //   Uri.parse(
+        //       "https://c524-2405-acc0-1306-39d9-4d04-33ff-18e7-1d07.ngrok-free.app/"),
+        //   headers: {
+        //     "Content-Type": "application/x-www-form-urlencoded",
+        //   },
+        //   body: {
+        //     "song_url": widget.item['external_urls']['spotify'],
+        //   },
+        // );
+        // print(response.body);
 
         final path = Directory("/storage/emulated/0/Download/TuneLoad");
         if ((await path.exists())) {
+          print('exists');
         } else {
+          print('creating');
           path.create();
+        }
+
+        try {
+          ALDownloader.download(
+              "https://file-examples.com/storage/fe83e1f11c664c2259506f1/2017/11/file_example_MP3_700KB.mp3",
+              directoryPath: "/storage/emulated/0/Download/TuneLoad/",
+              fileName: "finaltry.webm",
+              handlerInterface:
+                  ALDownloaderHandlerInterface(progressHandler: (progress) {
+                debugPrint(
+                    'ALDownloader | download progress = $progress, url \n');
+              }, succeededHandler: () {
+                debugPrint('ALDownloader | download succeeded, url = \n');
+                attachMetadata();
+              }, failedHandler: () {
+                debugPrint('ALDownloader | download failed, url = \n');
+              }, pausedHandler: () {
+                debugPrint('ALDownloader | download paused, url = \n');
+              }));
+        } catch (e) {
+          print(e);
         }
 
         // try {
@@ -214,6 +238,9 @@ class _SongDetailPageState extends State<SongDetailPage> {
   void initState() {
     super.initState();
     generateColors();
+
+    ALDownloader.initialize();
+    ALDownloader.configurePrint(true, frequentEnabled: false);
   }
 
   @override

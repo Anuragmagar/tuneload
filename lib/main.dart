@@ -3,12 +3,15 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:metadata_god/metadata_god.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:salomon_bottom_bar/salomon_bottom_bar.dart';
 import 'package:tuneload/pages/homepage.dart';
 import 'package:tuneload/pages/topbar.dart';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+  MetadataGod.initialize();
   runApp(const MyApp());
 }
 
