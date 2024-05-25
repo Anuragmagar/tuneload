@@ -1,15 +1,12 @@
-import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 import 'dart:ui';
 // import 'package:background_downloader/background_downloader.dart';
 
+import 'package:background_downloader/background_downloader.dart';
 import 'package:ffmpeg_kit_flutter_full_gpl/ffmpeg_kit.dart';
 import 'package:ffmpeg_kit_flutter_full_gpl/ffmpeg_kit_config.dart';
 import 'package:ffmpeg_kit_flutter_full_gpl/return_code.dart';
-// import 'package:flutter_downloader/flutter_downloader.dart';
-
-import 'package:al_downloader/al_downloader.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -20,7 +17,8 @@ import 'package:palette_generator/palette_generator.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:text_scroll/text_scroll.dart';
-// import 'package:marquee/marquee.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:path/path.dart';
 
 class SongDetailPage extends StatefulWidget {
   const SongDetailPage(this.item, this.artists, {super.key});
@@ -87,16 +85,39 @@ class _SongDetailPageState extends State<SongDetailPage> {
     }
   }
 
-  void attachMetadata() async {
+  static Future<String> getExternalDocumentPath() async {
+    var status = await Permission.storage.status;
+    if (!status.isGranted) {
+      await Permission.storage.request();
+    }
+    Directory directory = Directory("dir");
+    if (Platform.isAndroid) {
+      directory = Directory("/storage/emulated/0/Download/TuneLoad");
+    } else {
+      directory = await getApplicationDocumentsDirectory();
+    }
+
+    final exPath = directory.path;
+    print("Saved Path: $exPath");
+    await Directory(exPath).create(recursive: true);
+    return exPath;
+  }
+
+  static Future<String> get _localPath async {
+    final String directory = await getExternalDocumentPath();
+    return directory;
+  }
+
+  void attachMetadata(String inputFile) async {
     DateTime dateTime = DateTime.parse(widget.item['album']['release_date']);
     String year = DateFormat('yyyy').format(dateTime);
 
     var imageUrl = widget.item['album']['images'][0]['url'];
     var imageBytes = await downloadImage(imageUrl);
 
-    var inputFile = "/storage/emulated/0/Download/TuneLoad/finaltry.webm";
-    var outputFile =
-        "/storage/emulated/0/Download/TuneLoad/finalconversion.mp3";
+    // var inputFile = "/storage/emulated/0/Download/TuneLoad/finaltry.webm";
+    String filePath = await _localPath;
+    var outputFile = "$filePath/finalrender.mp3";
 
     await FFmpegKit.execute(
             '-i $inputFile -vn -c:a libmp3lame -ar 44100 -ac 2 -b:a 192k $outputFile')
@@ -105,24 +126,27 @@ class _SongDetailPageState extends State<SongDetailPage> {
 
       if (ReturnCode.isSuccess(returnCode)) {
         print("Ffmpeg process completed with rc $returnCode");
+        await File(inputFile).delete();
 
         await MetadataGod.writeMetadata(
-            file: "/storage/emulated/0/Download/TuneLoad/finalconversion.mp3",
-            metadata: Metadata(
-              title: widget.item['name'],
-              artist: widget.artists,
-              album: widget.item['album']['name'],
-              albumArtist: widget.artists,
-              trackNumber: widget.item['track_number'],
-              trackTotal: widget.item['album']['total_tracks'],
-              discNumber: widget.item['disc_number'],
-              durationMs: double.parse(widget.item['duration_ms'].toString()),
-              year: int.parse(year),
-              picture: Picture(
-                data: imageBytes,
-                mimeType: "image/jpg",
-              ),
-            ));
+          file: outputFile,
+          metadata: Metadata(
+            title: widget.item['name'],
+            artist: widget.artists,
+            album: widget.item['album']['name'],
+            albumArtist: widget.artists,
+            trackNumber: widget.item['track_number'],
+            trackTotal: widget.item['album']['total_tracks'],
+            discNumber: widget.item['disc_number'],
+            durationMs: double.parse(widget.item['duration_ms'].toString()),
+            year: int.parse(year),
+            picture: Picture(
+              data: imageBytes,
+              mimeType: "image/jpg",
+            ),
+          ),
+        );
+        await File(outputFile).rename("$filePath/${widget.item['name']}.mp3");
       } else if (ReturnCode.isCancel(returnCode)) {
         // CANCEL
       } else {
@@ -137,98 +161,74 @@ class _SongDetailPageState extends State<SongDetailPage> {
 
   downloadSong() async {
     try {
-      var status = await Permission.storage.status;
-      if (status.isDenied) {
-        await Permission.storage.request();
+      String fileName = widget.item['id'];
+      String filePath = await _localPath;
+      File file = File(filePath);
+      print('File is : $file');
+      print('file path is : $filePath');
+
+      // final response = await http.post(
+      //   Uri.parse(
+      //       "https://c524-2405-acc0-1306-39d9-4d04-33ff-18e7-1d07.ngrok-free.app/"),
+      //   headers: {
+      //     "Content-Type": "application/x-www-form-urlencoded",
+      //   },
+      //   body: {
+      //     "song_url": widget.item['external_urls']['spotify'],
+      //   },
+      // );
+      // print(response.body);
+
+      final path = Directory("/storage/emulated/0/Download/TuneLoad");
+      final task = DownloadTask(
+        url:
+            // "https://rr5---sn-qi4pcxgoxu-3uhe.googlevideo.com/videoplayback?expire=1716620230&ei=ZjdRZur0GanljuMP_eqJ-Aw&ip=2405%3Aacc0%3A1306%3A39d9%3A8490%3Ab33%3Ac981%3Aa868&id=o-AM0hHFts1E6aL2rh2SLmux70238cy_x2C9J-fm8uo0rx&itag=251&source=youtube&requiressl=yes&xpc=EgVo2aDSNQ%3D%3D&mh=Bw&mm=31%2C29&mn=sn-qi4pcxgoxu-3uhe%2Csn-h557sns7&ms=au%2Crdu&mv=m&mvi=5&pl=52&gcr=np&initcwndbps=883750&bui=AWRWj2QJtVEuUV35qpyDaHHjVodOb3acQc-I97t-JAyHWj22KUK_i6O97CMKBJLrZl3CUlWMdxwN0Jv5&spc=UWF9fzRqSzOhh8gXeGkxqmai3Z-xxOvYRYZEHcdjNeBq4esbCSNCTm8znMzy&vprv=1&svpuc=1&mime=audio%2Fwebm&ns=Oa7ODbie-J2vs2_juCf2aokQ&rqh=1&gir=yes&clen=4534399&dur=261.121&lmt=1714591386939203&mt=1716598365&fvip=3&keepalive=yes&c=WEB&sefc=1&txp=2318224&n=xHu-1A_OwPXnNg&sparams=expire%2Cei%2Cip%2Cid%2Citag%2Csource%2Crequiressl%2Cxpc%2Cgcr%2Cbui%2Cspc%2Cvprv%2Csvpuc%2Cmime%2Cns%2Crqh%2Cgir%2Cclen%2Cdur%2Clmt&lsparams=mh%2Cmm%2Cmn%2Cms%2Cmv%2Cmvi%2Cpl%2Cinitcwndbps&lsig=AHWaYeowRQIhAJPucL751RtsO8SW2mRFa82PxbOeOeBLmKfT8_nC2-AEAiAeXQh8ZusbaKw8b6kYtUlg1sE6bh1pSREtNxZn8woVew%3D%3D&sig=AJfQdSswRgIhAMrIA3SQG0yDdN-j2etgyoyY-xlZ0AKSzYLhWhALO1g3AiEA6qqocyc7TLju60N66bGkS6ArsgCQDuW4cgi6CXk9kpM%3D",
+            "https://rr1---sn-qi4pcxgoxu-3uhe.googlevideo.com/videoplayback?expire=1716625813&ei=NU1RZob0D-KOjuMPi6O1-A0&ip=2405%3Aacc0%3A1306%3A39d9%3A8490%3Ab33%3Ac981%3Aa868&id=o-AF0LJrc_IqeMGBqBqwhO8laa3l78WIEMIKwce7GnPqdy&itag=251&source=youtube&requiressl=yes&xpc=EgVo2aDSNQ%3D%3D&mh=Bs&mm=31%2C29&mn=sn-qi4pcxgoxu-3uhe%2Csn-h5576n7r&ms=au%2Crdu&mv=m&mvi=1&pl=52&gcr=np&initcwndbps=1058750&bui=AWRWj2QvcKAcEueA_pYYd_0CStFzlpq49m4X-TU_H_5xVFD9yS2S7N0oDhZtao7yXUe1ke6ZKVIwABif&spc=UWF9f_iZgh9NzNRwXxyKnEWpEUZLK9aRr7xRBDY6QPUApSOrVPP06clJGTGo&vprv=1&svpuc=1&mime=audio%2Fwebm&ns=HzWKYnyhwzO4oGPNMdWc49oQ&rqh=1&gir=yes&clen=3132573&dur=169.861&lmt=1714866357452919&mt=1716603898&fvip=4&keepalive=yes&c=WEB&sefc=1&txp=2318224&n=sbZ7EN6yu339lA&sparams=expire%2Cei%2Cip%2Cid%2Citag%2Csource%2Crequiressl%2Cxpc%2Cgcr%2Cbui%2Cspc%2Cvprv%2Csvpuc%2Cmime%2Cns%2Crqh%2Cgir%2Cclen%2Cdur%2Clmt&lsparams=mh%2Cmm%2Cmn%2Cms%2Cmv%2Cmvi%2Cpl%2Cinitcwndbps&lsig=AHWaYeowRQIhANsujF6eKu4Upu5nNzq5uXS0ylUxWYj0tHjZntCrtICfAiB3xDgK7aNEUtC0hl-aAyrqttBj8w3rIFxbq4gcteODMA%3D%3D&sig=AJfQdSswRAIgBOYA4w_cQTHWukOLqI98MCyHjwfiEO6rEu-RAZC9EWICIHctQ1-nVnPi0Nj-D6y_EBbA4s8fu28DeQVWXglrxn6n",
+        filename: "$fileName.webm",
+        displayName: widget.item['name'],
+        directory: filePath,
+        updates:
+            Updates.statusAndProgress, // request status and progress updates
+        requiresWiFi: true,
+        // retries: 5,
+        allowPause: true,
+      );
+
+      final result = await FileDownloader().download(task,
+          onProgress: (progress) => print('Progress: ${progress * 100}%'),
+          onStatus: (status) => print('Status: $status'));
+
+      switch (result.status) {
+        case TaskStatus.complete:
+        case TaskStatus.canceled:
+          print('Download was canceled');
+
+        case TaskStatus.paused:
+          print('Download was paused');
+
+        default:
+          print('Download not successful');
       }
-      try {
-        // final response = await http.post(
-        //   Uri.parse(
-        //       "https://c524-2405-acc0-1306-39d9-4d04-33ff-18e7-1d07.ngrok-free.app/"),
-        //   headers: {
-        //     "Content-Type": "application/x-www-form-urlencoded",
-        //   },
-        //   body: {
-        //     "song_url": widget.item['external_urls']['spotify'],
-        //   },
-        // );
-        // print(response.body);
 
-        final path = Directory("/storage/emulated/0/Download/TuneLoad");
-        if ((await path.exists())) {
-          print('exists');
-        } else {
-          print('creating');
-          path.create();
-        }
+      final ddpath = await FileDownloader()
+          .moveToSharedStorage(task, SharedStorage.downloads,
+              directory: "TuneLoad")
+          .then(
+        (value) async {
+          print(value);
+          print("Moved successufllly");
 
-        try {
-          ALDownloader.download(
-              "https://file-examples.com/storage/fe83e1f11c664c2259506f1/2017/11/file_example_MP3_700KB.mp3",
-              directoryPath: "/storage/emulated/0/Download/TuneLoad/",
-              fileName: "finaltry.webm",
-              handlerInterface:
-                  ALDownloaderHandlerInterface(progressHandler: (progress) {
-                debugPrint(
-                    'ALDownloader | download progress = $progress, url \n');
-              }, succeededHandler: () {
-                debugPrint('ALDownloader | download succeeded, url = \n');
-                attachMetadata();
-              }, failedHandler: () {
-                debugPrint('ALDownloader | download failed, url = \n');
-              }, pausedHandler: () {
-                debugPrint('ALDownloader | download paused, url = \n');
-              }));
-        } catch (e) {
-          print(e);
-        }
+          attachMetadata(value!);
+        },
+      );
+      // try {
+      //   if (ddpath != null) {
+      //     await File(ddpath).rename('$filePath.webm');
+      //   }
+      // } catch (e) {}
 
-        // try {
-        //   final id = await FlutterDownloader.enqueue(
-        //     url: response.body,
-        //     savedDir: '/storage/emulated/0/Download/TuneLoad/',
-        //     fileName: "finaltry.webm",
-        //     showNotification: true,
-        //     openFileFromNotification: true,
-        //   );
-
-        //   print("this is id of downloader $id");
-        // } catch (e) {
-        //   print(e);
-        // }
-
-        //   try {
-        //     final task = DownloadTask(
-        //         url: response.body,
-        //         filename: "finaltry.webm",
-        //         directory: '/storage/emulated/0/Download/TuneLoad/',
-        //         updates: Updates
-        //             .statusAndProgress, // request status and progress updates
-        //         requiresWiFi: true,
-        //         retries: 5,
-        //         allowPause: true);
-
-        //     final result = await FileDownloader().download(task,
-        //         onProgress: (progress) => print('Progress: ${progress * 100}%'),
-        //         onStatus: (status) => print('Status: $status'));
-
-        //     switch (result.status) {
-        //       case TaskStatus.complete:
-        //         print('Success!');
-
-        //       case TaskStatus.canceled:
-        //         print('Download was canceled');
-
-        //       case TaskStatus.paused:
-        //         print('Download was paused');
-
-        //       default:
-        //         print('Download not successful');
-        //     }
-        //   } catch (e) {}
-      } catch (e) {
-        print(e);
-      }
+      debugPrint(
+          'Android path to dog picture in .images = ${ddpath ?? "permission denied"}');
     } catch (e) {
       print(e);
     }
@@ -239,8 +239,18 @@ class _SongDetailPageState extends State<SongDetailPage> {
     super.initState();
     generateColors();
 
-    ALDownloader.initialize();
-    ALDownloader.configurePrint(true, frequentEnabled: false);
+    // Registering a callback and configure notifications
+    FileDownloader().configureNotification(
+      // for the 'Download & Open' dog picture
+      // which uses 'download' which is not the .defaultGroup
+      // but the .await group so won't use the above config
+      running:
+          const TaskNotification('Downloading', 'file: {filename} {progress}'),
+      complete:
+          const TaskNotification('Download {filename}', 'Download complete'),
+      error: const TaskNotification('Error', '{numFailed}/{numTotal} failed'),
+      progressBar: true,
+    ); // dog can also open directly from tap
   }
 
   @override
