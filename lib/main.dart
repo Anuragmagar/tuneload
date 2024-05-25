@@ -6,12 +6,14 @@ import 'package:get/get.dart';
 import 'package:metadata_god/metadata_god.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:salomon_bottom_bar/salomon_bottom_bar.dart';
+import 'package:tuneload/local_notifications.dart';
 import 'package:tuneload/pages/homepage.dart';
 import 'package:tuneload/pages/topbar.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   MetadataGod.initialize();
+  await LocalNotification.init();
   runApp(const MyApp());
 }
 

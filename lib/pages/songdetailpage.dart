@@ -19,6 +19,7 @@ import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:text_scroll/text_scroll.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart';
+import 'package:tuneload/local_notifications.dart';
 
 class SongDetailPage extends StatefulWidget {
   const SongDetailPage(this.item, this.artists, {super.key});
@@ -147,6 +148,12 @@ class _SongDetailPageState extends State<SongDetailPage> {
           ),
         );
         await File(outputFile).rename("$filePath/${widget.item['name']}.mp3");
+        LocalNotification.cancelNotification(222);
+
+        LocalNotification.showSimpleNotification(
+            title: "Download complete!",
+            body: "",
+            payload: "thisi s simple data");
       } else if (ReturnCode.isCancel(returnCode)) {
         // CANCEL
       } else {
@@ -160,30 +167,39 @@ class _SongDetailPageState extends State<SongDetailPage> {
   }
 
   downloadSong() async {
+    // LocalNotification.showSimpleNotification(
+    //     title: "Simple Notication",
+    //     body: "This is simple notification",
+    //     payload: "thisi s simple data");
+
+    LocalNotification.showIndeterminateProgressNotification(
+      id: 111,
+      title: "Downloading started ...",
+      body: "Preparing link",
+    );
+
     try {
       String fileName = widget.item['id'];
       String filePath = await _localPath;
       File file = File(filePath);
-      print('File is : $file');
-      print('file path is : $filePath');
 
-      // final response = await http.post(
-      //   Uri.parse(
-      //       "https://c524-2405-acc0-1306-39d9-4d04-33ff-18e7-1d07.ngrok-free.app/"),
-      //   headers: {
-      //     "Content-Type": "application/x-www-form-urlencoded",
-      //   },
-      //   body: {
-      //     "song_url": widget.item['external_urls']['spotify'],
-      //   },
-      // );
-      // print(response.body);
+      final response = await http.post(
+        Uri.parse(
+            "https://ab88-2405-acc0-1306-39d9-3d28-5e2c-c4f-e2a.ngrok-free.app/"),
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: {
+          "song_url": widget.item['external_urls']['spotify'],
+        },
+      );
+      print(response.body);
+      LocalNotification.cancelNotification(111);
 
-      final path = Directory("/storage/emulated/0/Download/TuneLoad");
       final task = DownloadTask(
-        url:
-            // "https://rr5---sn-qi4pcxgoxu-3uhe.googlevideo.com/videoplayback?expire=1716620230&ei=ZjdRZur0GanljuMP_eqJ-Aw&ip=2405%3Aacc0%3A1306%3A39d9%3A8490%3Ab33%3Ac981%3Aa868&id=o-AM0hHFts1E6aL2rh2SLmux70238cy_x2C9J-fm8uo0rx&itag=251&source=youtube&requiressl=yes&xpc=EgVo2aDSNQ%3D%3D&mh=Bw&mm=31%2C29&mn=sn-qi4pcxgoxu-3uhe%2Csn-h557sns7&ms=au%2Crdu&mv=m&mvi=5&pl=52&gcr=np&initcwndbps=883750&bui=AWRWj2QJtVEuUV35qpyDaHHjVodOb3acQc-I97t-JAyHWj22KUK_i6O97CMKBJLrZl3CUlWMdxwN0Jv5&spc=UWF9fzRqSzOhh8gXeGkxqmai3Z-xxOvYRYZEHcdjNeBq4esbCSNCTm8znMzy&vprv=1&svpuc=1&mime=audio%2Fwebm&ns=Oa7ODbie-J2vs2_juCf2aokQ&rqh=1&gir=yes&clen=4534399&dur=261.121&lmt=1714591386939203&mt=1716598365&fvip=3&keepalive=yes&c=WEB&sefc=1&txp=2318224&n=xHu-1A_OwPXnNg&sparams=expire%2Cei%2Cip%2Cid%2Citag%2Csource%2Crequiressl%2Cxpc%2Cgcr%2Cbui%2Cspc%2Cvprv%2Csvpuc%2Cmime%2Cns%2Crqh%2Cgir%2Cclen%2Cdur%2Clmt&lsparams=mh%2Cmm%2Cmn%2Cms%2Cmv%2Cmvi%2Cpl%2Cinitcwndbps&lsig=AHWaYeowRQIhAJPucL751RtsO8SW2mRFa82PxbOeOeBLmKfT8_nC2-AEAiAeXQh8ZusbaKw8b6kYtUlg1sE6bh1pSREtNxZn8woVew%3D%3D&sig=AJfQdSswRgIhAMrIA3SQG0yDdN-j2etgyoyY-xlZ0AKSzYLhWhALO1g3AiEA6qqocyc7TLju60N66bGkS6ArsgCQDuW4cgi6CXk9kpM%3D",
-            "https://rr1---sn-qi4pcxgoxu-3uhe.googlevideo.com/videoplayback?expire=1716625813&ei=NU1RZob0D-KOjuMPi6O1-A0&ip=2405%3Aacc0%3A1306%3A39d9%3A8490%3Ab33%3Ac981%3Aa868&id=o-AF0LJrc_IqeMGBqBqwhO8laa3l78WIEMIKwce7GnPqdy&itag=251&source=youtube&requiressl=yes&xpc=EgVo2aDSNQ%3D%3D&mh=Bs&mm=31%2C29&mn=sn-qi4pcxgoxu-3uhe%2Csn-h5576n7r&ms=au%2Crdu&mv=m&mvi=1&pl=52&gcr=np&initcwndbps=1058750&bui=AWRWj2QvcKAcEueA_pYYd_0CStFzlpq49m4X-TU_H_5xVFD9yS2S7N0oDhZtao7yXUe1ke6ZKVIwABif&spc=UWF9f_iZgh9NzNRwXxyKnEWpEUZLK9aRr7xRBDY6QPUApSOrVPP06clJGTGo&vprv=1&svpuc=1&mime=audio%2Fwebm&ns=HzWKYnyhwzO4oGPNMdWc49oQ&rqh=1&gir=yes&clen=3132573&dur=169.861&lmt=1714866357452919&mt=1716603898&fvip=4&keepalive=yes&c=WEB&sefc=1&txp=2318224&n=sbZ7EN6yu339lA&sparams=expire%2Cei%2Cip%2Cid%2Citag%2Csource%2Crequiressl%2Cxpc%2Cgcr%2Cbui%2Cspc%2Cvprv%2Csvpuc%2Cmime%2Cns%2Crqh%2Cgir%2Cclen%2Cdur%2Clmt&lsparams=mh%2Cmm%2Cmn%2Cms%2Cmv%2Cmvi%2Cpl%2Cinitcwndbps&lsig=AHWaYeowRQIhANsujF6eKu4Upu5nNzq5uXS0ylUxWYj0tHjZntCrtICfAiB3xDgK7aNEUtC0hl-aAyrqttBj8w3rIFxbq4gcteODMA%3D%3D&sig=AJfQdSswRAIgBOYA4w_cQTHWukOLqI98MCyHjwfiEO6rEu-RAZC9EWICIHctQ1-nVnPi0Nj-D6y_EBbA4s8fu28DeQVWXglrxn6n",
+        url: response.body,
+        // "https://rr5---sn-qi4pcxgoxu-3uhe.googlevideo.com/videoplayback?expire=1716620230&ei=ZjdRZur0GanljuMP_eqJ-Aw&ip=2405%3Aacc0%3A1306%3A39d9%3A8490%3Ab33%3Ac981%3Aa868&id=o-AM0hHFts1E6aL2rh2SLmux70238cy_x2C9J-fm8uo0rx&itag=251&source=youtube&requiressl=yes&xpc=EgVo2aDSNQ%3D%3D&mh=Bw&mm=31%2C29&mn=sn-qi4pcxgoxu-3uhe%2Csn-h557sns7&ms=au%2Crdu&mv=m&mvi=5&pl=52&gcr=np&initcwndbps=883750&bui=AWRWj2QJtVEuUV35qpyDaHHjVodOb3acQc-I97t-JAyHWj22KUK_i6O97CMKBJLrZl3CUlWMdxwN0Jv5&spc=UWF9fzRqSzOhh8gXeGkxqmai3Z-xxOvYRYZEHcdjNeBq4esbCSNCTm8znMzy&vprv=1&svpuc=1&mime=audio%2Fwebm&ns=Oa7ODbie-J2vs2_juCf2aokQ&rqh=1&gir=yes&clen=4534399&dur=261.121&lmt=1714591386939203&mt=1716598365&fvip=3&keepalive=yes&c=WEB&sefc=1&txp=2318224&n=xHu-1A_OwPXnNg&sparams=expire%2Cei%2Cip%2Cid%2Citag%2Csource%2Crequiressl%2Cxpc%2Cgcr%2Cbui%2Cspc%2Cvprv%2Csvpuc%2Cmime%2Cns%2Crqh%2Cgir%2Cclen%2Cdur%2Clmt&lsparams=mh%2Cmm%2Cmn%2Cms%2Cmv%2Cmvi%2Cpl%2Cinitcwndbps&lsig=AHWaYeowRQIhAJPucL751RtsO8SW2mRFa82PxbOeOeBLmKfT8_nC2-AEAiAeXQh8ZusbaKw8b6kYtUlg1sE6bh1pSREtNxZn8woVew%3D%3D&sig=AJfQdSswRgIhAMrIA3SQG0yDdN-j2etgyoyY-xlZ0AKSzYLhWhALO1g3AiEA6qqocyc7TLju60N66bGkS6ArsgCQDuW4cgi6CXk9kpM%3D",
+        // "https://rr1---sn-qi4pcxgoxu-3uhe.googlevideo.com/videoplayback?expire=1716625813&ei=NU1RZob0D-KOjuMPi6O1-A0&ip=2405%3Aacc0%3A1306%3A39d9%3A8490%3Ab33%3Ac981%3Aa868&id=o-AF0LJrc_IqeMGBqBqwhO8laa3l78WIEMIKwce7GnPqdy&itag=251&source=youtube&requiressl=yes&xpc=EgVo2aDSNQ%3D%3D&mh=Bs&mm=31%2C29&mn=sn-qi4pcxgoxu-3uhe%2Csn-h5576n7r&ms=au%2Crdu&mv=m&mvi=1&pl=52&gcr=np&initcwndbps=1058750&bui=AWRWj2QvcKAcEueA_pYYd_0CStFzlpq49m4X-TU_H_5xVFD9yS2S7N0oDhZtao7yXUe1ke6ZKVIwABif&spc=UWF9f_iZgh9NzNRwXxyKnEWpEUZLK9aRr7xRBDY6QPUApSOrVPP06clJGTGo&vprv=1&svpuc=1&mime=audio%2Fwebm&ns=HzWKYnyhwzO4oGPNMdWc49oQ&rqh=1&gir=yes&clen=3132573&dur=169.861&lmt=1714866357452919&mt=1716603898&fvip=4&keepalive=yes&c=WEB&sefc=1&txp=2318224&n=sbZ7EN6yu339lA&sparams=expire%2Cei%2Cip%2Cid%2Citag%2Csource%2Crequiressl%2Cxpc%2Cgcr%2Cbui%2Cspc%2Cvprv%2Csvpuc%2Cmime%2Cns%2Crqh%2Cgir%2Cclen%2Cdur%2Clmt&lsparams=mh%2Cmm%2Cmn%2Cms%2Cmv%2Cmvi%2Cpl%2Cinitcwndbps&lsig=AHWaYeowRQIhANsujF6eKu4Upu5nNzq5uXS0ylUxWYj0tHjZntCrtICfAiB3xDgK7aNEUtC0hl-aAyrqttBj8w3rIFxbq4gcteODMA%3D%3D&sig=AJfQdSswRAIgBOYA4w_cQTHWukOLqI98MCyHjwfiEO6rEu-RAZC9EWICIHctQ1-nVnPi0Nj-D6y_EBbA4s8fu28DeQVWXglrxn6n",
         filename: "$fileName.webm",
         displayName: widget.item['name'],
         directory: filePath,
@@ -218,17 +234,15 @@ class _SongDetailPageState extends State<SongDetailPage> {
           print(value);
           print("Moved successufllly");
 
+          LocalNotification.showIndeterminateProgressNotification(
+            id: 222,
+            title: "Converting & embedding metadata ...",
+            body: "This may take a few seconds",
+          );
+
           attachMetadata(value!);
         },
       );
-      // try {
-      //   if (ddpath != null) {
-      //     await File(ddpath).rename('$filePath.webm');
-      //   }
-      // } catch (e) {}
-
-      debugPrint(
-          'Android path to dog picture in .images = ${ddpath ?? "permission denied"}');
     } catch (e) {
       print(e);
     }
@@ -245,9 +259,9 @@ class _SongDetailPageState extends State<SongDetailPage> {
       // which uses 'download' which is not the .defaultGroup
       // but the .await group so won't use the above config
       running:
-          const TaskNotification('Downloading', 'file: {filename} {progress}'),
-      complete:
-          const TaskNotification('Download {filename}', 'Download complete'),
+          const TaskNotification('Downloading {displayName}', '{progress}'),
+      // complete:
+      //     const TaskNotification('Download {filename}', 'Download complete'),
       error: const TaskNotification('Error', '{numFailed}/{numTotal} failed'),
       progressBar: true,
     ); // dog can also open directly from tap
