@@ -96,34 +96,34 @@ class _MyHomePageState extends State<MyHomePage> {
         items: [
           /// Home
           SalomonBottomBarItem(
-            icon: Icon(
+            icon: const Icon(
               PhosphorIconsBold.house,
               // size: 18,
               color: Colors.white,
             ),
-            title: Text("Home"),
-            selectedColor: Color.fromARGB(255, 224, 224, 224),
+            title: const Text("Home"),
+            selectedColor: const Color.fromARGB(255, 224, 224, 224),
           ),
 
           /// Likes
           SalomonBottomBarItem(
-            icon: Icon(Icons.favorite_border),
-            title: Text("Likes"),
-            selectedColor: Colors.pink,
+            icon: const Icon(PhosphorIconsBold.clipboardText),
+            title: const Text("Tasks"),
+            selectedColor: Colors.white,
           ),
 
           /// Search
           SalomonBottomBarItem(
-            icon: Icon(Icons.search),
-            title: Text("Search"),
-            selectedColor: Colors.orange,
+            icon: const Icon(PhosphorIconsBold.heart),
+            title: const Text("Favourites"),
+            selectedColor: Colors.white,
           ),
 
           /// Profile
           SalomonBottomBarItem(
-            icon: Icon(Icons.person),
-            title: Text("Profile"),
-            selectedColor: Colors.teal,
+            icon: const Icon(PhosphorIconsBold.downloadSimple),
+            title: const Text("Downloads"),
+            selectedColor: Colors.white,
           ),
         ],
       ),

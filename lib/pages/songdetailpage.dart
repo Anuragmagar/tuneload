@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'dart:ui';
 // import 'package:background_downloader/background_downloader.dart';
 
+import 'package:animated_digit/animated_digit.dart';
 import 'package:background_downloader/background_downloader.dart';
 import 'package:ffmpeg_kit_flutter_full_gpl/ffmpeg_kit.dart';
 import 'package:ffmpeg_kit_flutter_full_gpl/ffmpeg_kit_config.dart';
@@ -11,6 +12,7 @@ import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
+import 'package:media_scanner/media_scanner.dart';
 import 'package:metadata_god/metadata_god.dart';
 // import 'package:metadata_god/metadata_god.dart';
 import 'package:palette_generator/palette_generator.dart';
@@ -20,17 +22,27 @@ import 'package:text_scroll/text_scroll.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart';
 import 'package:tuneload/local_notifications.dart';
+import 'package:tuneload/pages/explicit.dart';
+import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 
 class SongDetailPage extends StatefulWidget {
-  const SongDetailPage(this.item, this.artists, {super.key});
+  SongDetailPage(this.item, this.artists, this.highResImageUrl, {super.key});
   final dynamic item;
-  final dynamic artists;
+  String artists;
+  final String highResImageUrl;
 
   @override
   State<SongDetailPage> createState() => _SongDetailPageState();
 }
 
 class _SongDetailPageState extends State<SongDetailPage> {
+  final YoutubeExplode yt = YoutubeExplode();
+  Video? currentSong;
+  String likes = "0";
+  String views = "0";
+  String year = "0";
+  String author = "Unknown Artist";
+
   List<Color> colors = [
     const Color(0xFF101115),
     Colors.black,
@@ -40,12 +52,14 @@ class _SongDetailPageState extends State<SongDetailPage> {
   Color lightMutedColor = Colors.white;
 
   void generateColors() async {
+    final thumbnail = widget.item['thumbnails'].last;
+
     final paletteGenerator = await PaletteGenerator.fromImageProvider(
       NetworkImage(
-        widget.item['album']['images'][0]['url'],
+        thumbnail['url'],
       ),
-      size: const Size(640, 640),
-      region: const Rect.fromLTRB(0, 0, 640, 640),
+      size: const Size(540, 540),
+      region: const Rect.fromLTRB(0, 0, 540, 540),
     );
     setState(() {
       colors = [
@@ -110,11 +124,7 @@ class _SongDetailPageState extends State<SongDetailPage> {
   }
 
   void attachMetadata(String inputFile) async {
-    DateTime dateTime = DateTime.parse(widget.item['album']['release_date']);
-    String year = DateFormat('yyyy').format(dateTime);
-
-    var imageUrl = widget.item['album']['images'][0]['url'];
-    var imageBytes = await downloadImage(imageUrl);
+    var imageBytes = await downloadImage(widget.highResImageUrl);
 
     // var inputFile = "/storage/emulated/0/Download/TuneLoad/finaltry.webm";
     String filePath = await _localPath;
@@ -132,14 +142,15 @@ class _SongDetailPageState extends State<SongDetailPage> {
         await MetadataGod.writeMetadata(
           file: outputFile,
           metadata: Metadata(
-            title: widget.item['name'],
+            title: widget.item['title'],
             artist: widget.artists,
             album: widget.item['album']['name'],
             albumArtist: widget.artists,
-            trackNumber: widget.item['track_number'],
-            trackTotal: widget.item['album']['total_tracks'],
-            discNumber: widget.item['disc_number'],
-            durationMs: double.parse(widget.item['duration_ms'].toString()),
+            // trackNumber: widget.item['track_number'],
+            // trackTotal: widget.item['album']['total_tracks'],
+            // discNumber: widget.item['disc_number'],
+            durationMs:
+                double.parse(widget.item['duration_seconds'].toString()) * 1000,
             year: int.parse(year),
             picture: Picture(
               data: imageBytes,
@@ -147,8 +158,15 @@ class _SongDetailPageState extends State<SongDetailPage> {
             ),
           ),
         );
-        await File(outputFile).rename("$filePath/${widget.item['name']}.mp3");
+        await File(outputFile).rename(
+            "$filePath/${widget.item['title']} - ${widget.artists}.mp3");
+
         LocalNotification.cancelNotification(222);
+
+        final loadmsg = await MediaScanner.loadMedia(
+          path: "$filePath/${widget.item['title']} - ${widget.artists}.mp3",
+        );
+        print(loadmsg);
 
         LocalNotification.showSimpleNotification(
             title: "Download complete!",
@@ -179,29 +197,23 @@ class _SongDetailPageState extends State<SongDetailPage> {
     );
 
     try {
-      String fileName = widget.item['id'];
+      final StreamManifest manifest =
+          await yt.videos.streamsClient.getManifest(widget.item['videoId']);
+      final List<AudioOnlyStreamInfo> sortedStreamInfo =
+          manifest.audioOnly.sortByBitrate();
+
+      // print(sortedStreamInfo.first.url.toString());
+
+      String fileName = widget.item['videoId'];
       String filePath = await _localPath;
       File file = File(filePath);
 
-      final response = await http.post(
-        Uri.parse(
-            "https://ab88-2405-acc0-1306-39d9-3d28-5e2c-c4f-e2a.ngrok-free.app/"),
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-        body: {
-          "song_url": widget.item['external_urls']['spotify'],
-        },
-      );
-      print(response.body);
       LocalNotification.cancelNotification(111);
 
       final task = DownloadTask(
-        url: response.body,
-        // "https://rr5---sn-qi4pcxgoxu-3uhe.googlevideo.com/videoplayback?expire=1716620230&ei=ZjdRZur0GanljuMP_eqJ-Aw&ip=2405%3Aacc0%3A1306%3A39d9%3A8490%3Ab33%3Ac981%3Aa868&id=o-AM0hHFts1E6aL2rh2SLmux70238cy_x2C9J-fm8uo0rx&itag=251&source=youtube&requiressl=yes&xpc=EgVo2aDSNQ%3D%3D&mh=Bw&mm=31%2C29&mn=sn-qi4pcxgoxu-3uhe%2Csn-h557sns7&ms=au%2Crdu&mv=m&mvi=5&pl=52&gcr=np&initcwndbps=883750&bui=AWRWj2QJtVEuUV35qpyDaHHjVodOb3acQc-I97t-JAyHWj22KUK_i6O97CMKBJLrZl3CUlWMdxwN0Jv5&spc=UWF9fzRqSzOhh8gXeGkxqmai3Z-xxOvYRYZEHcdjNeBq4esbCSNCTm8znMzy&vprv=1&svpuc=1&mime=audio%2Fwebm&ns=Oa7ODbie-J2vs2_juCf2aokQ&rqh=1&gir=yes&clen=4534399&dur=261.121&lmt=1714591386939203&mt=1716598365&fvip=3&keepalive=yes&c=WEB&sefc=1&txp=2318224&n=xHu-1A_OwPXnNg&sparams=expire%2Cei%2Cip%2Cid%2Citag%2Csource%2Crequiressl%2Cxpc%2Cgcr%2Cbui%2Cspc%2Cvprv%2Csvpuc%2Cmime%2Cns%2Crqh%2Cgir%2Cclen%2Cdur%2Clmt&lsparams=mh%2Cmm%2Cmn%2Cms%2Cmv%2Cmvi%2Cpl%2Cinitcwndbps&lsig=AHWaYeowRQIhAJPucL751RtsO8SW2mRFa82PxbOeOeBLmKfT8_nC2-AEAiAeXQh8ZusbaKw8b6kYtUlg1sE6bh1pSREtNxZn8woVew%3D%3D&sig=AJfQdSswRgIhAMrIA3SQG0yDdN-j2etgyoyY-xlZ0AKSzYLhWhALO1g3AiEA6qqocyc7TLju60N66bGkS6ArsgCQDuW4cgi6CXk9kpM%3D",
-        // "https://rr1---sn-qi4pcxgoxu-3uhe.googlevideo.com/videoplayback?expire=1716625813&ei=NU1RZob0D-KOjuMPi6O1-A0&ip=2405%3Aacc0%3A1306%3A39d9%3A8490%3Ab33%3Ac981%3Aa868&id=o-AF0LJrc_IqeMGBqBqwhO8laa3l78WIEMIKwce7GnPqdy&itag=251&source=youtube&requiressl=yes&xpc=EgVo2aDSNQ%3D%3D&mh=Bs&mm=31%2C29&mn=sn-qi4pcxgoxu-3uhe%2Csn-h5576n7r&ms=au%2Crdu&mv=m&mvi=1&pl=52&gcr=np&initcwndbps=1058750&bui=AWRWj2QvcKAcEueA_pYYd_0CStFzlpq49m4X-TU_H_5xVFD9yS2S7N0oDhZtao7yXUe1ke6ZKVIwABif&spc=UWF9f_iZgh9NzNRwXxyKnEWpEUZLK9aRr7xRBDY6QPUApSOrVPP06clJGTGo&vprv=1&svpuc=1&mime=audio%2Fwebm&ns=HzWKYnyhwzO4oGPNMdWc49oQ&rqh=1&gir=yes&clen=3132573&dur=169.861&lmt=1714866357452919&mt=1716603898&fvip=4&keepalive=yes&c=WEB&sefc=1&txp=2318224&n=sbZ7EN6yu339lA&sparams=expire%2Cei%2Cip%2Cid%2Citag%2Csource%2Crequiressl%2Cxpc%2Cgcr%2Cbui%2Cspc%2Cvprv%2Csvpuc%2Cmime%2Cns%2Crqh%2Cgir%2Cclen%2Cdur%2Clmt&lsparams=mh%2Cmm%2Cmn%2Cms%2Cmv%2Cmvi%2Cpl%2Cinitcwndbps&lsig=AHWaYeowRQIhANsujF6eKu4Upu5nNzq5uXS0ylUxWYj0tHjZntCrtICfAiB3xDgK7aNEUtC0hl-aAyrqttBj8w3rIFxbq4gcteODMA%3D%3D&sig=AJfQdSswRAIgBOYA4w_cQTHWukOLqI98MCyHjwfiEO6rEu-RAZC9EWICIHctQ1-nVnPi0Nj-D6y_EBbA4s8fu28DeQVWXglrxn6n",
+        url: sortedStreamInfo.first.url.toString(),
         filename: "$fileName.webm",
-        displayName: widget.item['name'],
+        displayName: widget.item['title'],
         directory: filePath,
         updates:
             Updates.statusAndProgress, // request status and progress updates
@@ -248,10 +260,40 @@ class _SongDetailPageState extends State<SongDetailPage> {
     }
   }
 
+  String convertImageToHighRes(String url) {
+    // Use regular expression to find 'w' followed by digits and '-'
+    final widthRegex = RegExp(r'w\d+-');
+    // Replace 'w' followed by digits and '-' with 'w540-'
+    url = url.replaceAll(widthRegex, 'w540-');
+
+    // Use regular expression to find 'h' followed by digits and '-'
+    final heightRegex = RegExp(r'h\d+-');
+    // Replace 'h' followed by digits and '-' with 'h540-'
+    url = url.replaceAll(heightRegex, 'h540-');
+
+    return url;
+  }
+
+  getYtMetadata() async {
+    Video video = await yt.videos
+        .get('https://youtube.com/watch?v=${widget.item['videoId']}');
+    var f = NumberFormat.compact(locale: "en_US");
+    setState(() {
+      currentSong = video;
+      likes = f.format(video.engagement.likeCount);
+      views = f.format(video.engagement.viewCount);
+      year = video.publishDate?.year.toString() ?? '0';
+      widget.artists = widget.item['artists'].isEmpty ?? true
+          ? video.author
+          : widget.artists;
+    });
+  }
+
   @override
   void initState() {
     super.initState();
     generateColors();
+    getYtMetadata();
 
     // Registering a callback and configure notifications
     FileDownloader().configureNotification(
@@ -259,7 +301,7 @@ class _SongDetailPageState extends State<SongDetailPage> {
       // which uses 'download' which is not the .defaultGroup
       // but the .await group so won't use the above config
       running:
-          const TaskNotification('Downloading {displayName}', '{progress}'),
+          const TaskNotification('Downloading {displayName}.mp3', '{progress}'),
       // complete:
       //     const TaskNotification('Download {filename}', 'Download complete'),
       error: const TaskNotification('Error', '{numFailed}/{numTotal} failed'),
@@ -303,12 +345,12 @@ class _SongDetailPageState extends State<SongDetailPage> {
                             children: [
                               Container(
                                 decoration: BoxDecoration(
-                                  border: Border.all(
-                                    color:
-                                        const Color.fromRGBO(139, 139, 139, 1),
-                                    width: 1,
-                                  ),
-                                  borderRadius: BorderRadius.circular(5),
+                                  // border: Border.all(
+                                  //   color:
+                                  //       const Color.fromRGBO(139, 139, 139, 1),
+                                  //   width: 1,
+                                  // ),
+                                  borderRadius: BorderRadius.circular(10),
                                   color:
                                       const Color.fromRGBO(217, 217, 217, 0.25),
                                 ),
@@ -422,9 +464,9 @@ class _SongDetailPageState extends State<SongDetailPage> {
                           width: 300,
                           child: Image(
                             image: NetworkImage(
-                              widget.item['album']['images'][0]['url'],
+                              widget.highResImageUrl,
                             ),
-                            fit: BoxFit.cover,
+                            fit: BoxFit.contain,
                             loadingBuilder: (context, child, loadingProgress) {
                               if (loadingProgress == null) return child;
                               return const Center(
@@ -442,9 +484,9 @@ class _SongDetailPageState extends State<SongDetailPage> {
                           height: 30,
                         ),
 
-                        if (widget.item['name'].length < 35)
+                        if (widget.item['title'].length < 35)
                           Text(
-                            widget.item['name'],
+                            widget.item['title'],
                             textAlign: TextAlign.center,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -455,7 +497,7 @@ class _SongDetailPageState extends State<SongDetailPage> {
                               fontWeight: FontWeight.w900,
                             ),
                           ),
-                        if (widget.item['name'].length >= 35)
+                        if (widget.item['title'].length >= 35)
                           ConstrainedBox(
                             constraints: const BoxConstraints(
                               maxHeight: 30,
@@ -464,7 +506,7 @@ class _SongDetailPageState extends State<SongDetailPage> {
                               minWidth: double.infinity,
                             ),
                             child: TextScroll(
-                              widget.item['name'],
+                              widget.item['title'],
                               mode: TextScrollMode.endless,
                               velocity: const Velocity(
                                   pixelsPerSecond: Offset(60, 0)),
@@ -497,17 +539,36 @@ class _SongDetailPageState extends State<SongDetailPage> {
                             // ),
                           ),
 
-                        Text(
-                          widget.artists,
-                          textAlign: TextAlign.center,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: Colors.white70,
-                            fontSize: 15,
-                            fontFamily: 'Circular',
-                            fontWeight: FontWeight.bold,
-                          ),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            widget.item['isExplicit']
+                                ? const Row(
+                                    children: [
+                                      ExplicitPage(),
+                                      SizedBox(
+                                        width: 4.0,
+                                      ),
+                                    ],
+                                  )
+                                : const SizedBox.shrink(),
+                            Flexible(
+                              child: Text(
+                                widget.artists?.isEmpty ?? true
+                                    ? 'Unknown Artist'
+                                    : widget.artists,
+                                textAlign: TextAlign.center,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 15,
+                                  fontFamily: 'Circular',
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
 
                         const SizedBox(
@@ -531,9 +592,8 @@ class _SongDetailPageState extends State<SongDetailPage> {
                                   const Icon(PhosphorIconsBold.downloadSimple),
                               label: const Text("Download Now"),
                               style: ButtonStyle(
-                                backgroundColor:
-                                    MaterialStateProperty.all<Color>(
-                                        vibrantColor),
+                                backgroundColor: WidgetStateProperty.all<Color>(
+                                    vibrantColor),
                               ),
                             ),
                           ],
@@ -561,7 +621,7 @@ class _SongDetailPageState extends State<SongDetailPage> {
                                   child: Column(
                                     children: [
                                       const Text(
-                                        "Popularity",
+                                        "Year",
                                         textAlign: TextAlign.center,
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
@@ -575,18 +635,28 @@ class _SongDetailPageState extends State<SongDetailPage> {
                                       const SizedBox(
                                         height: 20,
                                       ),
-                                      Text(
-                                        widget.item['popularity'].toString(),
-                                        textAlign: TextAlign.center,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: const TextStyle(
+
+                                      AnimatedDigitWidget(
+                                        value: int.parse(year),
+                                        textStyle: const TextStyle(
                                           color: Colors.white,
                                           fontSize: 35,
                                           fontFamily: 'Circular',
                                           fontWeight: FontWeight.w900,
                                         ),
                                       ),
+                                      // Text(
+                                      //   year,
+                                      //   textAlign: TextAlign.center,
+                                      //   maxLines: 1,
+                                      //   overflow: TextOverflow.ellipsis,
+                                      //   style: const TextStyle(
+                                      //     color: Colors.white,
+                                      //     fontSize: 35,
+                                      //     fontFamily: 'Circular',
+                                      //     fontWeight: FontWeight.w900,
+                                      //   ),
+                                      // ),
                                     ],
                                   ),
                                 ),
@@ -624,8 +694,9 @@ class _SongDetailPageState extends State<SongDetailPage> {
                                         height: 20,
                                       ),
                                       Text(
-                                        formatDuration(
-                                            widget.item['duration_ms']),
+                                        widget.item['duration'],
+                                        // formatDuration(
+                                        //     widget.item['duration_ms']),
                                         textAlign: TextAlign.center,
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
@@ -663,7 +734,7 @@ class _SongDetailPageState extends State<SongDetailPage> {
                                   child: Column(
                                     children: [
                                       const Text(
-                                        "Disc Number",
+                                        "Likes",
                                         textAlign: TextAlign.center,
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
@@ -678,7 +749,8 @@ class _SongDetailPageState extends State<SongDetailPage> {
                                         height: 20,
                                       ),
                                       Text(
-                                        widget.item['disc_number'].toString(),
+                                        likes,
+                                        // widget.item['disc_number'].toString(),
                                         textAlign: TextAlign.center,
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
@@ -711,7 +783,7 @@ class _SongDetailPageState extends State<SongDetailPage> {
                                   child: Column(
                                     children: [
                                       const Text(
-                                        "Total Tracks",
+                                        "Views",
                                         textAlign: TextAlign.center,
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
@@ -726,8 +798,9 @@ class _SongDetailPageState extends State<SongDetailPage> {
                                         height: 20,
                                       ),
                                       Text(
-                                        widget.item['album']['total_tracks']
-                                            .toString(),
+                                        // widget.item['album']['total_tracks']
+                                        //     .toString(),
+                                        views,
                                         textAlign: TextAlign.center,
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,

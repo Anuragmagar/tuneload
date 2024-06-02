@@ -7,7 +7,9 @@ import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'dart:convert'; // required to encode/decode json data
 import 'package:http/http.dart' as http;
 import 'package:shimmer/shimmer.dart';
+import 'package:tuneload/pages/explicit.dart';
 import 'package:tuneload/pages/songdetailpage.dart';
+import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 
 class SearchPage extends StatefulWidget {
   const SearchPage({super.key});
@@ -17,37 +19,20 @@ class SearchPage extends StatefulWidget {
 }
 
 class _SearchPageState extends State<SearchPage> {
-  Map<String, dynamic> results = {};
+  // VideoSearchList? results;
+  List<dynamic> results = [];
+
   bool isSearching = false;
   bool isSearchTap = false;
   bool hasError = false;
   String errorMsg = ' ';
   int totalSongs = 0;
+  final YoutubeExplode yt = YoutubeExplode();
 
   TextEditingController searchTextController = TextEditingController();
 
   String token =
       "BQDLuvGbG2ls8qNNkvml15ekfDrjUJrtby67LLYsgn5gyHgCen32-5SbDWKT_AfTUcKrgDoCTPOfQVbubd9mbYlK5MQ1_MH3XNaKupBONoW6LxXXG0A";
-
-  getAccessToken() async {
-    try {
-      final response = await http
-          .post(Uri.parse("https://accounts.spotify.com/api/token"), headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-      }, body: {
-        "grant_type": "client_credentials",
-        "client_id": "5d9129c2a9224eb8903668e80796b1cf",
-        "client_secret": "50a052bfbfaf4934b33537202098b3f0",
-      });
-      final body = json.decode(response.body);
-      setState(() {
-        token = body["access_token"];
-      });
-      getSongs();
-    } catch (e) {
-      print(e);
-    }
-  }
 
   void getSongs() async {
     // final ass = await getAccessToken();
@@ -58,35 +43,95 @@ class _SearchPageState extends State<SearchPage> {
       isSearchTap = true;
     });
     try {
-      final response = await http.get(
-        Uri.parse(
-            "https://api.spotify.com/v1/search?q=${searchTextController.text}&type=track"),
+      final response = await http.post(
+        Uri.parse("https://tuneload.anuragmagar.com.np/"),
         headers: {
-          "Content-Type": "application/json",
-          "authorization": "Bearer $token"
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: {
+          "song": searchTextController.text,
         },
       );
-      final body = json.decode(response.body);
-      final errorstat = body['error'];
-      if (errorstat != null) {
-        setState(() {
-          hasError = true;
-          errorMsg = body['error']['message'];
-          print(errorMsg);
-        });
-        int errorCode = body['error']['status'];
-        if (errorCode == 401) {
-          getAccessToken();
-        }
-      }
+      final value = json.decode(response.body);
       setState(() {
         isSearching = false;
         isSearchTap = false;
-        results = body;
-        totalSongs = results['tracks']['total'];
-        print(results);
-        print(results['tracks']['items'][0]['album']['images'][0]['url']);
+        results = value;
+        totalSongs = results.length;
+        // print(results);
       });
+      // print(results);
+      // print(value);
+
+      // CxcIZL4Tajg
+      // var video =
+      //     await yt.videos.get('https://youtube.com/watch?v=by0lRnN7Cp0');
+      // print(video);
+
+      // final List<Video> searchResults =
+      //     await yt.search(searchTextController.text).then(
+      //   (value) {
+      //     setState(() {
+      //       isSearching = false;
+      //       isSearchTap = false;
+      //       results = value;
+      //       totalSongs = results.length;
+      //       // print(results);
+      //     });
+      //     print(value);
+      //     return value;
+      //   },
+      // );
+
+      // final StreamManifest manifest =
+      //     await yt.videos.streamsClient.getManifest("CxcIZL4Tajg");
+      // final List<AudioOnlyStreamInfo> sortedStreamInfo =
+      //     manifest.audioOnly.sortByBitrate();
+
+      // print(sortedStreamInfo);
+
+      // print(sortedStreamInfo.first.url.toString());
+      // print(sortedStreamInfo.last.url.toString());
+
+      // print(searchResults);
+      // var video = await yt.videos.get(
+      //     'https://www.youtube.com/watch?v=u_yIGGhubZs'); // Returns a Video instance.
+      // // print(video);
+      // var title = video.title;
+      // var author = video.author;
+      // var duration = video.duration;
+      // print(title);
+      // print(author);
+      // print(duration);
+      // final response = await http.get(
+      //   Uri.parse(
+      //       "https://api.spotify.com/v1/search?q=${searchTextController.text}&type=track"),
+      //   headers: {
+      //     "Content-Type": "application/json",
+      //     "authorization": "Bearer $token"
+      //   },
+      // );
+      // final body = json.decode(response.body);
+      // final errorstat = body['error'];
+      // if (errorstat != null) {
+      //   setState(() {
+      //     hasError = true;
+      //     errorMsg = body['error']['message'];
+      //     print(errorMsg);
+      //   });
+      //   int errorCode = body['error']['status'];
+      //   if (errorCode == 401) {
+      //     getAccessToken();
+      //   }
+      // }
+      // setState(() {
+      //   isSearching = false;
+      //   isSearchTap = false;
+      //   results = body;
+      //   totalSongs = results['tracks']['total'];
+      //   print(results);
+      //   print(results['tracks']['items'][0]['album']['images'][0]['url']);
+      // });
     } catch (e) {
       print(e);
     }
@@ -137,7 +182,7 @@ class _SearchPageState extends State<SearchPage> {
                           style: const TextStyle(color: Colors.white),
                           autofocus: true,
                           cursorColor: Colors.white,
-                          onSubmitted: (_) => getAccessToken(),
+                          onSubmitted: (_) => getSongs(),
                           decoration: InputDecoration(
                             isCollapsed: true,
                             filled: true,
@@ -198,7 +243,7 @@ class _SearchPageState extends State<SearchPage> {
                                   ),
                                   color: Colors.white,
                                   onPressed: () {
-                                    getAccessToken();
+                                    getSongs();
                                   },
                                 ),
                               ],
@@ -333,19 +378,40 @@ class _SearchPageState extends State<SearchPage> {
                       Expanded(
                         child: totalSongs > 0
                             ? ListView.builder(
-                                itemCount: results['tracks']['items'].length,
+                                itemCount: results.length,
                                 itemBuilder: (context, index) {
-                                  final item =
-                                      results['tracks']['items'][index];
+                                  final item = results[index];
+                                  print(item);
+                                  // print(item.thumbnails);
+                                  // final item =
+                                  //     results?.items[index];
 
                                   // List<String, dynamic> artistNames = item
                                   //     .map((artist) => item['artists'])
                                   //     .toList();
-                                  List<dynamic> artistNames = item['artists']
-                                      .map((artist) => artist['name'])
-                                      .toList();
+                                  List<dynamic> artistNames =
+                                      item['artists'] != null
+                                          ? item['artists']
+                                              .map((artist) =>
+                                                  artist['name'] ?? 'N/A')
+                                              .toList()
+                                          : [];
                                   String combinedArtistNames =
                                       artistNames.join(', ');
+
+                                  //to get the highest resolution image url
+                                  // Use regular expression to find 'w' followed by digits and '-'
+                                  final widthRegex = RegExp(r'w\d+-');
+                                  // Replace 'w' followed by digits and '-' with 'w540-'
+                                  String highResImageUrl = item['thumbnails']
+                                      .last['url']
+                                      .replaceAll(widthRegex, 'w540-');
+
+                                  // Use regular expression to find 'h' followed by digits and '-'
+                                  final heightRegex = RegExp(r'h\d+-');
+                                  // Replace 'h' followed by digits and '-' with 'h540-'
+                                  highResImageUrl = highResImageUrl.replaceAll(
+                                      heightRegex, 'h540-');
 
                                   return Padding(
                                     padding: const EdgeInsets.only(bottom: 15),
@@ -353,7 +419,9 @@ class _SearchPageState extends State<SearchPage> {
                                       onTap: () {
                                         Get.to(
                                           () => SongDetailPage(
-                                              item, combinedArtistNames),
+                                              item,
+                                              combinedArtistNames,
+                                              highResImageUrl),
                                           transition: Transition.rightToLeft,
                                           duration:
                                               const Duration(milliseconds: 300),
@@ -373,11 +441,13 @@ class _SearchPageState extends State<SearchPage> {
                                               color: const Color.fromRGBO(
                                                   147, 65, 78, 1),
                                             ),
-                                            child: Image(
+                                            child:
+                                                // SizedBox.shrink(),
+                                                Image(
                                               image: NetworkImage(
-                                                item['album']['images'][0]
-                                                    ['url'],
+                                                item['thumbnails'].last['url'],
                                               ),
+                                              fit: BoxFit.cover,
                                             ),
                                           ),
                                           const SizedBox(width: 12.0),
@@ -388,7 +458,8 @@ class _SearchPageState extends State<SearchPage> {
                                                   CrossAxisAlignment.start,
                                               children: [
                                                 Text(
-                                                  item['name'],
+                                                  // item.title,
+                                                  item['title'] ?? 'N/A',
                                                   maxLines: 1,
                                                   overflow:
                                                       TextOverflow.ellipsis,
@@ -398,15 +469,33 @@ class _SearchPageState extends State<SearchPage> {
                                                       fontWeight:
                                                           FontWeight.w900),
                                                 ),
-                                                Text(
-                                                  combinedArtistNames,
-                                                  maxLines: 1,
-                                                  overflow:
-                                                      TextOverflow.ellipsis,
-                                                  style: const TextStyle(
-                                                    color: Colors.white70,
-                                                    fontWeight: FontWeight.bold,
-                                                  ),
+                                                Row(
+                                                  children: [
+                                                    item['isExplicit']
+                                                        ? const Row(
+                                                            children: [
+                                                              ExplicitPage(),
+                                                              SizedBox(
+                                                                width: 4.0,
+                                                              ),
+                                                            ],
+                                                          )
+                                                        : const SizedBox
+                                                            .shrink(),
+                                                    Flexible(
+                                                      child: Text(
+                                                        '${combinedArtistNames?.isEmpty ?? true ? 'Unknown Artist' : combinedArtistNames} • ${item['duration']}',
+                                                        maxLines: 1,
+                                                        overflow: TextOverflow
+                                                            .ellipsis,
+                                                        style: const TextStyle(
+                                                          color: Colors.white70,
+                                                          fontWeight:
+                                                              FontWeight.bold,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ],
                                                 ),
                                               ],
                                             ),

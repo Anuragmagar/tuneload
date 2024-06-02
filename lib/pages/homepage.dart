@@ -6,6 +6,7 @@ import 'package:tuneload/pages/greeting.dart';
 import 'package:tuneload/pages/searchpage.dart';
 import 'dart:convert'; // required to encode/decode json data
 import 'package:http/http.dart' as http;
+import 'package:tuneload/pages/songdetailpage.dart';
 
 class Homepage extends StatefulWidget {
   const Homepage({super.key});
@@ -55,7 +56,7 @@ class _HomepageState extends State<Homepage> {
     try {
       final response = await http.get(
         Uri.parse(
-            "https://api.spotify.com/v1/recommendations?seed_artists=3sauLUNFUPvJVWIADSYTvZ&seed_genres=nepali+indie%2Cclassical%2Ccountry&seed_tracks=0c6xIDDpzE81m2q797ordA"),
+            "https://api.spotify.com/v1/recommendations?seed_artists=1RyvyyTE3xzB2ZywiAwp0i%2C0iEtIxbK0KxaSlF7G42ZOp%2C1deQzOQwArAsUgm2WdjtyI%2C00FQb4jTyendYWaN8pK0wa%2C3sauLUNFUPvJVWIADSYTvZ"),
         headers: {
           "Content-Type": "application/json",
           "authorization": "Bearer $token"
@@ -228,7 +229,7 @@ class _HomepageState extends State<Homepage> {
             : const SizedBox.shrink(),
 
         SizedBox(
-          height: 234,
+          height: 250,
           child: !isSearching
               ? ListView.builder(
                   scrollDirection: Axis.horizontal,
@@ -241,38 +242,71 @@ class _HomepageState extends State<Homepage> {
                         .toList();
                     String combinedArtistNames = artistNames.join(', ');
 
-                    return SizedBox(
-                      width: 200,
-                      child: Padding(
-                        padding: EdgeInsets.only(right: 20),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Image(
-                              image: NetworkImage(
-                                item['album']['images'][0]['url'],
+                    return GestureDetector(
+                      onTap: () {
+                        // Get.to(
+                        //   () => SongDetailPage(item, combinedArtistNames),
+                        //   transition: Transition.rightToLeft,
+                        //   duration: const Duration(milliseconds: 300),
+                        // );
+                      },
+                      child: SizedBox(
+                        width: 200,
+                        child: Padding(
+                          padding: const EdgeInsets.only(right: 20),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              ConstrainedBox(
+                                constraints: const BoxConstraints(
+                                  maxHeight: 200,
+                                  // maxWidth: 200,
+                                ),
+                                child: Image(
+                                  image: NetworkImage(
+                                    item['album']['images'][0]['url'],
+                                  ),
+                                  fit: BoxFit.contain,
+                                  loadingBuilder: (BuildContext context,
+                                      Widget child,
+                                      ImageChunkEvent? loadingProgress) {
+                                    if (loadingProgress == null) return child;
+                                    return Center(
+                                      child: CircularProgressIndicator(
+                                        value: loadingProgress
+                                                    .expectedTotalBytes !=
+                                                null
+                                            ? loadingProgress
+                                                    .cumulativeBytesLoaded /
+                                                loadingProgress
+                                                    .expectedTotalBytes!
+                                            : null,
+                                      ),
+                                    );
+                                  },
+                                ),
                               ),
-                            ),
-                            SizedBox(height: 10),
-                            Text(
-                              item['name'],
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w900),
-                            ),
-                            Text(
-                              combinedArtistNames,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.normal),
-                            ),
-                          ],
+                              const SizedBox(height: 10),
+                              Text(
+                                item['name'],
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w900),
+                              ),
+                              Text(
+                                combinedArtistNames,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.normal),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     );
