@@ -20,10 +20,10 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:text_scroll/text_scroll.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:path/path.dart';
 import 'package:tuneload/local_notifications.dart';
 import 'package:tuneload/pages/explicit.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
+import 'package:device_info_plus/device_info_plus.dart';
 
 class SongDetailPage extends StatefulWidget {
   SongDetailPage(this.item, this.artists, this.highResImageUrl, {super.key});
@@ -40,7 +40,7 @@ class _SongDetailPageState extends State<SongDetailPage> {
   Video? currentSong;
   String likes = "0";
   String views = "0";
-  String year = "0";
+  String year = "0000";
   String author = "Unknown Artist";
 
   List<Color> colors = [
@@ -101,10 +101,28 @@ class _SongDetailPageState extends State<SongDetailPage> {
   }
 
   static Future<String> getExternalDocumentPath() async {
-    var status = await Permission.storage.status;
-    if (!status.isGranted) {
-      await Permission.storage.request();
+    final DeviceInfoPlugin info = DeviceInfoPlugin();
+    final AndroidDeviceInfo androidInfo = await info.androidInfo;
+    print('releaseVersion : ${androidInfo.version.release}');
+    final int androidVersion = int.parse(androidInfo.version.release);
+
+    if (androidVersion < 13) {
+      var status = await Permission.storage.status;
+
+      if (!status.isGranted) {
+        await Permission.storage.request();
+      }
+    } else {
+      var status = await Permission.audio.status;
+      var notistatus = await Permission.notification.status;
+      if (!status.isGranted) {
+        await Permission.audio.request();
+      }
+      if (!notistatus.isGranted) {
+        await Permission.notification.request();
+      }
     }
+
     Directory directory = Directory("dir");
     if (Platform.isAndroid) {
       directory = Directory("/storage/emulated/0/Download/TuneLoad");
@@ -185,28 +203,22 @@ class _SongDetailPageState extends State<SongDetailPage> {
   }
 
   downloadSong() async {
-    // LocalNotification.showSimpleNotification(
-    //     title: "Simple Notication",
-    //     body: "This is simple notification",
-    //     payload: "thisi s simple data");
-
-    LocalNotification.showIndeterminateProgressNotification(
-      id: 111,
-      title: "Downloading started ...",
-      body: "Preparing link",
-    );
-
     try {
+      String fileName = widget.item['videoId'];
+      String filePath = await _localPath;
+
+      LocalNotification.showIndeterminateProgressNotification(
+        id: 111,
+        title: "Downloading started ...",
+        body: "Preparing link",
+      );
+
       final StreamManifest manifest =
           await yt.videos.streamsClient.getManifest(widget.item['videoId']);
       final List<AudioOnlyStreamInfo> sortedStreamInfo =
           manifest.audioOnly.sortByBitrate();
 
       // print(sortedStreamInfo.first.url.toString());
-
-      String fileName = widget.item['videoId'];
-      String filePath = await _localPath;
-      File file = File(filePath);
 
       LocalNotification.cancelNotification(111);
 
