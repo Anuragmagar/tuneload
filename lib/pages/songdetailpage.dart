@@ -46,6 +46,8 @@ class _SongDetailPageState extends ConsumerState<SongDetailPage> {
   String views = "0";
   String year = "0000";
   String author = "Unknown Artist";
+  bool isOnFavourite = false;
+  dynamic favouriteKey = '';
 
   List<Color> colors = [
     const Color(0xFF101115),
@@ -314,7 +316,32 @@ class _SongDetailPageState extends ConsumerState<SongDetailPage> {
   Future<void> addFavourite(Map<String, dynamic> newItem) async {
     final favouritesBox = Hive.box('favourites');
     await favouritesBox.add(newItem);
-    print("Favourites added success");
+    setState(() {
+      isOnFavourite = true;
+    });
+  }
+
+  void removeFavourite(dynamic removeKey) async {
+    final favouritesBox = Hive.box('favourites');
+    print(removeKey);
+    favouritesBox.delete(removeKey);
+    setState(() {
+      isOnFavourite = false;
+      favouriteKey = '';
+    });
+  }
+
+  void isFavourite() {
+    final favouritesBox = Hive.box('favourites');
+    final data = favouritesBox.keys.map((key) {
+      final item = favouritesBox.get(key);
+      if (item['title'] == widget.item['title']) {
+        setState(() {
+          isOnFavourite = true;
+          favouriteKey = key;
+        });
+      }
+    }).toList();
   }
 
   @override
@@ -322,6 +349,7 @@ class _SongDetailPageState extends ConsumerState<SongDetailPage> {
     super.initState();
     generateColors();
     getYtMetadata();
+    isFavourite();
 
     // Registering a callback and configure notifications
     FileDownloader().configureNotification(
@@ -456,26 +484,6 @@ class _SongDetailPageState extends ConsumerState<SongDetailPage> {
                                               textAlign: TextAlign.right,
                                               selectable: true,
                                             ),
-                                            //  Marquee(
-                                            //   text: widget.item['album']
-                                            //       ['name'],
-                                            //   style: const TextStyle(
-                                            //     fontFamily: 'CircularStd',
-                                            //     fontSize: 12,
-                                            //     color: Colors.white,
-                                            //     fontWeight: FontWeight.w900,
-                                            //   ),
-                                            //   scrollAxis: Axis.horizontal,
-                                            //   crossAxisAlignment:
-                                            //       CrossAxisAlignment.start,
-                                            //   blankSpace: 20.0,
-                                            //   velocity: 25.0,
-                                            //   pauseAfterRound:
-                                            //       const Duration(seconds: 1),
-                                            //   decelerationCurve: Curves.easeOut,
-                                            //   startAfter:
-                                            //       const Duration(seconds: 3),
-                                            // ),
                                           )
                                       ],
                                     ),
@@ -553,22 +561,6 @@ class _SongDetailPageState extends ConsumerState<SongDetailPage> {
                               textAlign: TextAlign.right,
                               selectable: true,
                             ),
-                            // Marquee(
-                            //   text: widget.item['name'],
-                            //   style: const TextStyle(
-                            //     fontFamily: 'CircularStd',
-                            //     fontSize: 20,
-                            //     color: Colors.white,
-                            //     fontWeight: FontWeight.w900,
-                            //   ),
-                            //   scrollAxis: Axis.horizontal,
-                            //   crossAxisAlignment: CrossAxisAlignment.start,
-                            //   blankSpace: 20.0,
-                            //   velocity: 25.0,
-                            //   pauseAfterRound: const Duration(seconds: 1),
-                            //   decelerationCurve: Curves.easeOut,
-                            //   startAfter: const Duration(seconds: 3),
-                            // ),
                           ),
 
                         Row(
@@ -611,20 +603,28 @@ class _SongDetailPageState extends ConsumerState<SongDetailPage> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            IconButton(
-                              onPressed: () async {
-                                addFavourite({
-                                  "title": widget.item['title'],
-                                  "artist": widget.artists,
-                                  "duration": widget.item['duration'],
-                                  "image": widget.highResImageUrl,
-                                  "year": year,
-                                  "likes": likes,
-                                });
-                              },
-                              icon: const Icon(PhosphorIconsBold.heart),
-                              color: Colors.white,
-                            ),
+                            isOnFavourite
+                                ? IconButton(
+                                    onPressed: () async {
+                                      removeFavourite(favouriteKey);
+                                    },
+                                    icon: const Icon(PhosphorIconsFill.heart),
+                                    color: Colors.white,
+                                  )
+                                : IconButton(
+                                    onPressed: () async {
+                                      addFavourite({
+                                        "title": widget.item['title'],
+                                        "artist": widget.artists,
+                                        "duration": widget.item['duration'],
+                                        "image": widget.highResImageUrl,
+                                        "year": year,
+                                        "likes": likes,
+                                      });
+                                    },
+                                    icon: const Icon(PhosphorIconsBold.heart),
+                                    color: Colors.white,
+                                  ),
                             FilledButton.icon(
                               onPressed: () {
                                 downloadSong();
@@ -676,7 +676,6 @@ class _SongDetailPageState extends ConsumerState<SongDetailPage> {
                                       const SizedBox(
                                         height: 20,
                                       ),
-
                                       AnimatedDigitWidget(
                                         value: int.parse(year),
                                         textStyle: const TextStyle(
@@ -686,18 +685,6 @@ class _SongDetailPageState extends ConsumerState<SongDetailPage> {
                                           fontWeight: FontWeight.w900,
                                         ),
                                       ),
-                                      // Text(
-                                      //   year,
-                                      //   textAlign: TextAlign.center,
-                                      //   maxLines: 1,
-                                      //   overflow: TextOverflow.ellipsis,
-                                      //   style: const TextStyle(
-                                      //     color: Colors.white,
-                                      //     fontSize: 35,
-                                      //     fontFamily: 'Circular',
-                                      //     fontWeight: FontWeight.w900,
-                                      //   ),
-                                      // ),
                                     ],
                                   ),
                                 ),

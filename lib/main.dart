@@ -9,6 +9,7 @@ import 'package:metadata_god/metadata_god.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:salomon_bottom_bar/salomon_bottom_bar.dart';
 import 'package:tuneload/local_notifications.dart';
+import 'package:tuneload/pages/aboutpage.dart';
 import 'package:tuneload/pages/downloadspage.dart';
 import 'package:tuneload/pages/favouritespage.dart';
 import 'package:tuneload/pages/homepage.dart';
@@ -63,7 +64,11 @@ class _MyHomePageState extends State<MyHomePage> {
   var _currentIndex = 0;
   @override
   Widget build(BuildContext context) {
+    final GlobalKey<ScaffoldState> _key = GlobalKey(); // Create a key
+
     return Scaffold(
+      key: _key,
+
       body: Container(
         width: double.infinity,
         // height: MediaQuery.of(context).size.height,
@@ -87,11 +92,12 @@ class _MyHomePageState extends State<MyHomePage> {
                 child: ListView(
                   children: [
                     // App bar
-                    const Topbar(),
+                    Topbar(_key),
 
                     if (_currentIndex == 0) const Homepage(),
                     if (_currentIndex == 1) const Favouritespage(),
                     if (_currentIndex == 2) const Downloadspage(),
+                    if (_currentIndex == 3) const Aboutpage(),
                   ],
                 ),
               ),
@@ -103,7 +109,7 @@ class _MyHomePageState extends State<MyHomePage> {
       // bottomNavigationBar: ,
       bottomNavigationBar: SalomonBottomBar(
         unselectedItemColor: Colors.white,
-        backgroundColor: Color.fromARGB(255, 35, 37, 46),
+        backgroundColor: const Color.fromARGB(255, 35, 37, 46),
         currentIndex: _currentIndex,
         onTap: (i) => setState(() => _currentIndex = i),
         items: [
@@ -139,6 +145,147 @@ class _MyHomePageState extends State<MyHomePage> {
             selectedColor: Colors.white,
           ),
         ],
+      ),
+      drawer: Drawer(
+        shape: const Border(
+          right: BorderSide.none,
+        ),
+        backgroundColor: Colors.black,
+        child: CustomScrollView(
+          shrinkWrap: true,
+          physics: const BouncingScrollPhysics(),
+          slivers: [
+            SliverAppBar(
+              backgroundColor: Colors.transparent,
+              automaticallyImplyLeading: false,
+              elevation: 0,
+              stretch: true,
+              expandedHeight: MediaQuery.of(context).size.height * 0.2,
+              flexibleSpace: FlexibleSpaceBar(
+                title: RichText(
+                  text: const TextSpan(
+                    text: "TuneLoad",
+                    style: TextStyle(
+                      fontSize: 20.0,
+                      fontWeight: FontWeight.w900,
+                    ),
+                    children: <TextSpan>[
+                      TextSpan(
+                        text: "1.0.0",
+                        style: TextStyle(
+                          fontSize: 7.0,
+                        ),
+                      ),
+                    ],
+                  ),
+                  textAlign: TextAlign.end,
+                ),
+                titlePadding: const EdgeInsets.only(bottom: 40.0),
+                centerTitle: true,
+                background: ShaderMask(
+                  shaderCallback: (rect) {
+                    return LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.black.withOpacity(0.8),
+                        Colors.black.withOpacity(0.1),
+                      ],
+                    ).createShader(
+                      Rect.fromLTRB(0, 0, rect.width, rect.height),
+                    );
+                  },
+                  blendMode: BlendMode.dstIn,
+                  child: const Image(
+                    fit: BoxFit.cover,
+                    alignment: Alignment.topCenter,
+                    image: AssetImage('assets/images/header.jpg'),
+                  ),
+                ),
+              ),
+            ),
+            SliverList(
+              delegate: SliverChildListDelegate(
+                [
+                  ListTile(
+                    title: const Text(
+                      "Home",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    contentPadding:
+                        const EdgeInsets.symmetric(horizontal: 20.0),
+                    leading: const Icon(
+                      PhosphorIconsFill.house,
+                      color: Colors.white,
+                    ),
+                    selected: true,
+                    onTap: () {},
+                  ),
+                  ListTile(
+                    title: const Text(
+                      "About",
+                      style: TextStyle(
+                        color: Colors.white,
+                      ),
+                    ),
+                    contentPadding:
+                        const EdgeInsets.symmetric(horizontal: 20.0),
+                    leading: const Icon(
+                      PhosphorIconsFill.info,
+                      color: Colors.white,
+                    ),
+                    onTap: () {},
+                  ),
+                  ListTile(
+                    title: const Text(
+                      "Developer website",
+                      style: TextStyle(
+                        color: Colors.white,
+                      ),
+                    ),
+                    subtitle: const Text(
+                      "https://anuragmagar.com.np",
+                      style: TextStyle(
+                        color: Colors.white60,
+                      ),
+                    ),
+                    contentPadding:
+                        const EdgeInsets.symmetric(horizontal: 20.0),
+                    leading: const Icon(
+                      PhosphorIconsFill.globe,
+                      color: Colors.white,
+                    ),
+                    onTap: () {},
+                  ),
+                ],
+              ),
+            ),
+            const SliverFillRemaining(
+              hasScrollBody: false,
+              child: Column(
+                children: <Widget>[
+                  Spacer(),
+                  Padding(
+                    padding: EdgeInsets.fromLTRB(5, 30, 5, 20),
+                    child: Center(
+                      child: Text(
+                        "Made with ❤️ by Anurag Magar",
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
       // ),
     );
