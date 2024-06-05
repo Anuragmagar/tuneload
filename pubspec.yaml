@@ -54,6 +54,10 @@ dependencies:
   media_scanner: ^2.1.0
   flutter_launcher_icons: ^0.13.1
   device_info_plus: ^10.1.0
+  flutter_riverpod: ^2.5.1
+  hive: ^2.2.3
+  hive_flutter: ^1.1.0
+  on_audio_query: ^2.9.0
 
 flutter_launcher_icons:
   android: "launcher_icon"

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:get/get.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:shimmer/shimmer.dart';
@@ -6,16 +7,16 @@ import 'package:tuneload/pages/greeting.dart';
 import 'package:tuneload/pages/searchpage.dart';
 import 'dart:convert'; // required to encode/decode json data
 import 'package:http/http.dart' as http;
-import 'package:tuneload/pages/songdetailpage.dart';
+import 'package:tuneload/providers/recommendation_provider.dart';
 
-class Homepage extends StatefulWidget {
+class Homepage extends ConsumerStatefulWidget {
   const Homepage({super.key});
 
   @override
-  State<Homepage> createState() => _HomepageState();
+  ConsumerState<Homepage> createState() => _HomepageState();
 }
 
-class _HomepageState extends State<Homepage> {
+class _HomepageState extends ConsumerState<Homepage> {
   Map<String, dynamic> results = {};
   bool isSearching = true;
   bool isSearchTap = false;
@@ -26,6 +27,7 @@ class _HomepageState extends State<Homepage> {
       "BQDLuvGbG2ls8qNNkvml15ekfDrjUJrtby67LLYsgn5gyHgCen32-5SbDWKT_AfTUcKrgDoCTPOfQVbubd9mbYlK5MQ1_MH3XNaKupBONoW6LxXXG0A";
 
   getAccessToken() async {
+    ref.read(isRecommendLoaded.notifier).state = false;
     try {
       final response = await http
           .post(Uri.parse("https://accounts.spotify.com/api/token"), headers: {
@@ -80,6 +82,9 @@ class _HomepageState extends State<Homepage> {
         isSearchTap = false;
         results = body;
       });
+
+      ref.read(recommendationProvider.notifier).addTasks(results);
+      ref.read(isRecommendLoaded.notifier).state = true;
     } catch (e) {
       print(e);
     }
@@ -88,11 +93,20 @@ class _HomepageState extends State<Homepage> {
   @override
   void initState() {
     super.initState();
-    getAccessToken();
+
+    var reco = ref.read(isRecommendLoaded);
+    if (reco != true) {
+      getAccessToken();
+    }
+    // getStoredData();
   }
 
   @override
   Widget build(BuildContext context) {
+    final recomm = ref.watch(recommendationProvider);
+    final isRecomLoaded = ref.watch(isRecommendLoaded);
+
+    // print(recomm['ldf'].length);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -174,16 +188,28 @@ class _HomepageState extends State<Homepage> {
         ),
 
         //Recommendation
-        const Text(
-          "Recommended for you",
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 18,
-            fontWeight: FontWeight.w900,
-          ),
+        Row(
+          children: [
+            const Text(
+              "Recommended for you",
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            const Spacer(),
+            IconButton(
+              onPressed: getAccessToken,
+              icon: const Icon(
+                PhosphorIconsRegular.arrowClockwise,
+                color: Colors.white,
+              ),
+            )
+          ],
         ),
         const SizedBox(height: 20),
-        isSearching
+        (isRecomLoaded == false)
             ? SizedBox(
                 width: double.infinity,
                 height: 250,
@@ -230,12 +256,15 @@ class _HomepageState extends State<Homepage> {
 
         SizedBox(
           height: 250,
-          child: !isSearching
+          child: (!isSearching || isRecomLoaded)
               ? ListView.builder(
                   scrollDirection: Axis.horizontal,
-                  itemCount: results['tracks'].length,
+                  // itemCount: results['tracks'].length,
+                  itemCount: recomm['tracks'].length,
                   itemBuilder: (context, index) {
-                    final item = results['tracks'][index];
+                    final item = recomm['tracks'][index];
+                    // final item = results['tracks'][index];
+                    // final item = recomm.elementAt(index);
 
                     List<dynamic> artistNames = item['artists']
                         .map((artist) => artist['name'])
@@ -244,11 +273,11 @@ class _HomepageState extends State<Homepage> {
 
                     return GestureDetector(
                       onTap: () {
-                        // Get.to(
-                        //   () => SongDetailPage(item, combinedArtistNames),
-                        //   transition: Transition.rightToLeft,
-                        //   duration: const Duration(milliseconds: 300),
-                        // );
+                        Get.to(
+                          () => const SearchPage(),
+                          transition: Transition.downToUp,
+                          duration: const Duration(milliseconds: 100),
+                        );
                       },
                       child: SizedBox(
                         width: 200,
@@ -257,11 +286,11 @@ class _HomepageState extends State<Homepage> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              ConstrainedBox(
-                                constraints: const BoxConstraints(
-                                  maxHeight: 200,
-                                  // maxWidth: 200,
-                                ),
+                              Container(
+                                height: 180,
+                                width: 200,
+                                color:
+                                    const Color.fromRGBO(217, 107, 107, 0.36),
                                 child: Image(
                                   image: NetworkImage(
                                     item['album']['images'][0]['url'],
@@ -314,47 +343,6 @@ class _HomepageState extends State<Homepage> {
                 )
               : const SizedBox.shrink(),
         ),
-        // SizedBox(
-        //   height: 250,
-        //   child: ListView.builder(
-        //     // shrinkWrap: true,
-        //     physics: const BouncingScrollPhysics(),
-        //     scrollDirection: Axis.horizontal,
-        //     itemCount: 10,
-
-        //     itemBuilder: (context, innerIndex) {
-        //       return const SizedBox(
-        //         width: 200,
-        //         child: Padding(
-        //           padding: EdgeInsets.only(right: 20),
-        //           child: Column(
-        //             crossAxisAlignment: CrossAxisAlignment.start,
-        //             children: [
-        //               Image(
-        //                 image: AssetImage('assets/images/lana.jpg'),
-        //               ),
-        //               SizedBox(height: 10),
-        //               Text(
-        //                 "Radio",
-        //                 style: TextStyle(
-        //                     color: Colors.white,
-        //                     fontSize: 14,
-        //                     fontWeight: FontWeight.w900),
-        //               ),
-        //               Text(
-        //                 "Lana Del Rey",
-        //                 style: TextStyle(
-        //                     color: Colors.white,
-        //                     fontSize: 14,
-        //                     fontWeight: FontWeight.normal),
-        //               ),
-        //             ],
-        //           ),
-        //         ),
-        //       );
-        //     },
-        //   ),
-        // )
       ],
     );
   }

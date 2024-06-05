@@ -8,6 +8,8 @@ import 'package:background_downloader/background_downloader.dart';
 import 'package:ffmpeg_kit_flutter_full_gpl/ffmpeg_kit.dart';
 import 'package:ffmpeg_kit_flutter_full_gpl/ffmpeg_kit_config.dart';
 import 'package:ffmpeg_kit_flutter_full_gpl/return_code.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -21,21 +23,23 @@ import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:text_scroll/text_scroll.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:tuneload/local_notifications.dart';
+import 'package:tuneload/models/tasks.dart';
 import 'package:tuneload/pages/explicit.dart';
+import 'package:tuneload/providers/tasks_provider.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 
-class SongDetailPage extends StatefulWidget {
+class SongDetailPage extends ConsumerStatefulWidget {
   SongDetailPage(this.item, this.artists, this.highResImageUrl, {super.key});
   final dynamic item;
   String artists;
   final String highResImageUrl;
 
   @override
-  State<SongDetailPage> createState() => _SongDetailPageState();
+  ConsumerState<SongDetailPage> createState() => _SongDetailPageState();
 }
 
-class _SongDetailPageState extends State<SongDetailPage> {
+class _SongDetailPageState extends ConsumerState<SongDetailPage> {
   final YoutubeExplode yt = YoutubeExplode();
   Video? currentSong;
   String likes = "0";
@@ -146,7 +150,7 @@ class _SongDetailPageState extends State<SongDetailPage> {
 
     // var inputFile = "/storage/emulated/0/Download/TuneLoad/finaltry.webm";
     String filePath = await _localPath;
-    var outputFile = "$filePath/finalrender.mp3";
+    var outputFile = "$filePath/${widget.item['videoId']}.mp3";
 
     await FFmpegKit.execute(
             '-i $inputFile -vn -c:a libmp3lame -ar 44100 -ac 2 -b:a 192k $outputFile')
@@ -179,7 +183,8 @@ class _SongDetailPageState extends State<SongDetailPage> {
         await File(outputFile).rename(
             "$filePath/${widget.item['title']} - ${widget.artists}.mp3");
 
-        LocalNotification.cancelNotification(222);
+        LocalNotification.cancelNotification(
+            int.parse(widget.item['duration_seconds'].toString()) + 1);
 
         final loadmsg = await MediaScanner.loadMedia(
           path: "$filePath/${widget.item['title']} - ${widget.artists}.mp3",
@@ -208,7 +213,7 @@ class _SongDetailPageState extends State<SongDetailPage> {
       String filePath = await _localPath;
 
       LocalNotification.showIndeterminateProgressNotification(
-        id: 111,
+        id: int.parse(widget.item['duration_seconds'].toString()),
         title: "Downloading started ...",
         body: "Preparing link",
       );
@@ -220,7 +225,8 @@ class _SongDetailPageState extends State<SongDetailPage> {
 
       // print(sortedStreamInfo.first.url.toString());
 
-      LocalNotification.cancelNotification(111);
+      LocalNotification.cancelNotification(
+          int.parse(widget.item['duration_seconds'].toString()));
 
       final task = DownloadTask(
         url: sortedStreamInfo.first.url.toString(),
@@ -234,8 +240,12 @@ class _SongDetailPageState extends State<SongDetailPage> {
         allowPause: true,
       );
 
-      final result = await FileDownloader().download(task,
-          onProgress: (progress) => print('Progress: ${progress * 100}%'),
+      final List<Tasks> tasks = ref.watch(tasksNotifierProvider).toList();
+
+      final TaskStatusUpdate result = await FileDownloader().download(task,
+          onProgress: (progress) {
+            print('Progress: ${progress * 100}%');
+          },
           onStatus: (status) => print('Status: $status'));
 
       switch (result.status) {
@@ -259,7 +269,7 @@ class _SongDetailPageState extends State<SongDetailPage> {
           print("Moved successufllly");
 
           LocalNotification.showIndeterminateProgressNotification(
-            id: 222,
+            id: int.parse(widget.item['duration_seconds'].toString()) + 1,
             title: "Converting & embedding metadata ...",
             body: "This may take a few seconds",
           );
@@ -301,6 +311,12 @@ class _SongDetailPageState extends State<SongDetailPage> {
     });
   }
 
+  Future<void> addFavourite(Map<String, dynamic> newItem) async {
+    final favouritesBox = Hive.box('favourites');
+    await favouritesBox.add(newItem);
+    print("Favourites added success");
+  }
+
   @override
   void initState() {
     super.initState();
@@ -319,6 +335,8 @@ class _SongDetailPageState extends State<SongDetailPage> {
       error: const TaskNotification('Error', '{numFailed}/{numTotal} failed'),
       progressBar: true,
     ); // dog can also open directly from tap
+
+    FileDownloader().trackTasks();
   }
 
   @override
@@ -472,8 +490,10 @@ class _SongDetailPageState extends State<SongDetailPage> {
                         const SizedBox(
                           height: 30,
                         ),
-                        SizedBox(
+                        Container(
+                          color: vibrantColor,
                           width: 300,
+                          height: 300,
                           child: Image(
                             image: NetworkImage(
                               widget.highResImageUrl,
@@ -592,9 +612,18 @@ class _SongDetailPageState extends State<SongDetailPage> {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             IconButton(
-                              onPressed: () {},
+                              onPressed: () async {
+                                addFavourite({
+                                  "title": widget.item['title'],
+                                  "artist": widget.artists,
+                                  "duration": widget.item['duration'],
+                                  "image": widget.highResImageUrl,
+                                  "year": year,
+                                  "likes": likes,
+                                });
+                              },
                               icon: const Icon(PhosphorIconsBold.heart),
-                              color: lightMutedColor,
+                              color: Colors.white,
                             ),
                             FilledButton.icon(
                               onPressed: () {

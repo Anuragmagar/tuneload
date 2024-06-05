@@ -35,105 +35,35 @@ class _SearchPageState extends State<SearchPage> {
       "BQDLuvGbG2ls8qNNkvml15ekfDrjUJrtby67LLYsgn5gyHgCen32-5SbDWKT_AfTUcKrgDoCTPOfQVbubd9mbYlK5MQ1_MH3XNaKupBONoW6LxXXG0A";
 
   void getSongs() async {
-    // final ass = await getAccessToken();
-    setState(() {
-      hasError = false;
-      errorMsg = ' ';
-      isSearching = true;
-      isSearchTap = true;
-    });
-    try {
-      final response = await http.post(
-        Uri.parse("https://tuneload.anuragmagar.com.np/"),
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-        body: {
-          "song": searchTextController.text,
-        },
-      );
-      final value = json.decode(response.body);
+    if (searchTextController.text.length > 0) {
+      // final ass = await getAccessToken();
       setState(() {
-        isSearching = false;
-        isSearchTap = false;
-        results = value;
-        totalSongs = results.length;
-        // print(results);
+        hasError = false;
+        errorMsg = ' ';
+        isSearching = true;
+        isSearchTap = true;
       });
-      // print(results);
-      // print(value);
-
-      // CxcIZL4Tajg
-      // var video =
-      //     await yt.videos.get('https://youtube.com/watch?v=by0lRnN7Cp0');
-      // print(video);
-
-      // final List<Video> searchResults =
-      //     await yt.search(searchTextController.text).then(
-      //   (value) {
-      //     setState(() {
-      //       isSearching = false;
-      //       isSearchTap = false;
-      //       results = value;
-      //       totalSongs = results.length;
-      //       // print(results);
-      //     });
-      //     print(value);
-      //     return value;
-      //   },
-      // );
-
-      // final StreamManifest manifest =
-      //     await yt.videos.streamsClient.getManifest("CxcIZL4Tajg");
-      // final List<AudioOnlyStreamInfo> sortedStreamInfo =
-      //     manifest.audioOnly.sortByBitrate();
-
-      // print(sortedStreamInfo);
-
-      // print(sortedStreamInfo.first.url.toString());
-      // print(sortedStreamInfo.last.url.toString());
-
-      // print(searchResults);
-      // var video = await yt.videos.get(
-      //     'https://www.youtube.com/watch?v=u_yIGGhubZs'); // Returns a Video instance.
-      // // print(video);
-      // var title = video.title;
-      // var author = video.author;
-      // var duration = video.duration;
-      // print(title);
-      // print(author);
-      // print(duration);
-      // final response = await http.get(
-      //   Uri.parse(
-      //       "https://api.spotify.com/v1/search?q=${searchTextController.text}&type=track"),
-      //   headers: {
-      //     "Content-Type": "application/json",
-      //     "authorization": "Bearer $token"
-      //   },
-      // );
-      // final body = json.decode(response.body);
-      // final errorstat = body['error'];
-      // if (errorstat != null) {
-      //   setState(() {
-      //     hasError = true;
-      //     errorMsg = body['error']['message'];
-      //     print(errorMsg);
-      //   });
-      //   int errorCode = body['error']['status'];
-      //   if (errorCode == 401) {
-      //     getAccessToken();
-      //   }
-      // }
-      // setState(() {
-      //   isSearching = false;
-      //   isSearchTap = false;
-      //   results = body;
-      //   totalSongs = results['tracks']['total'];
-      //   print(results);
-      //   print(results['tracks']['items'][0]['album']['images'][0]['url']);
-      // });
-    } catch (e) {
-      print(e);
+      try {
+        final response = await http.post(
+          Uri.parse("https://tuneload.anuragmagar.com.np/"),
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+          body: {
+            "song": searchTextController.text,
+          },
+        );
+        final value = json.decode(response.body);
+        setState(() {
+          isSearching = false;
+          isSearchTap = false;
+          results = value;
+          totalSongs = results.length;
+          // print(results);
+        });
+      } catch (e) {
+        print(e);
+      }
     }
   }
 
@@ -234,7 +164,7 @@ class _SearchPageState extends State<SearchPage> {
                                   ),
                                   color: Colors.white,
                                   onPressed: () {
-                                    print("cross");
+                                    searchTextController.text = '';
                                   },
                                 ),
                                 IconButton(
@@ -261,15 +191,6 @@ class _SearchPageState extends State<SearchPage> {
                       const SizedBox(
                         height: 15,
                       ),
-
-                      isSearchTap
-                          ? const Text(
-                              "0 results",
-                              style: TextStyle(
-                                color: Colors.white,
-                              ),
-                            )
-                          : const SizedBox.shrink(),
 
                       isSearching
                           ? SizedBox(
@@ -377,134 +298,142 @@ class _SearchPageState extends State<SearchPage> {
 
                       Expanded(
                         child: totalSongs > 0
-                            ? ListView.builder(
-                                itemCount: results.length,
-                                itemBuilder: (context, index) {
-                                  final item = results[index];
-                                  print(item);
-                                  // print(item.thumbnails);
-                                  // final item =
-                                  //     results?.items[index];
+                            ? Scrollbar(
+                                radius: const Radius.circular(8),
+                                child: ListView.builder(
+                                  physics: const BouncingScrollPhysics(),
+                                  itemCount: results.length,
+                                  itemBuilder: (context, index) {
+                                    final item = results[index];
+                                    print(item);
+                                    // print(item.thumbnails);
+                                    // final item =
+                                    //     results?.items[index];
 
-                                  // List<String, dynamic> artistNames = item
-                                  //     .map((artist) => item['artists'])
-                                  //     .toList();
-                                  List<dynamic> artistNames =
-                                      item['artists'] != null
-                                          ? item['artists']
-                                              .map((artist) =>
-                                                  artist['name'] ?? 'N/A')
-                                              .toList()
-                                          : [];
-                                  String combinedArtistNames =
-                                      artistNames.join(', ');
+                                    // List<String, dynamic> artistNames = item
+                                    //     .map((artist) => item['artists'])
+                                    //     .toList();
+                                    List<dynamic> artistNames =
+                                        item['artists'] != null
+                                            ? item['artists']
+                                                .map((artist) =>
+                                                    artist['name'] ?? 'N/A')
+                                                .toList()
+                                            : [];
+                                    String combinedArtistNames =
+                                        artistNames.join(', ');
 
-                                  //to get the highest resolution image url
-                                  // Use regular expression to find 'w' followed by digits and '-'
-                                  final widthRegex = RegExp(r'w\d+-');
-                                  // Replace 'w' followed by digits and '-' with 'w540-'
-                                  String highResImageUrl = item['thumbnails']
-                                      .last['url']
-                                      .replaceAll(widthRegex, 'w540-');
+                                    //to get the highest resolution image url
+                                    // Use regular expression to find 'w' followed by digits and '-'
+                                    final widthRegex = RegExp(r'w\d+-');
+                                    // Replace 'w' followed by digits and '-' with 'w540-'
+                                    String highResImageUrl = item['thumbnails']
+                                        .last['url']
+                                        .replaceAll(widthRegex, 'w540-');
 
-                                  // Use regular expression to find 'h' followed by digits and '-'
-                                  final heightRegex = RegExp(r'h\d+-');
-                                  // Replace 'h' followed by digits and '-' with 'h540-'
-                                  highResImageUrl = highResImageUrl.replaceAll(
-                                      heightRegex, 'h540-');
+                                    // Use regular expression to find 'h' followed by digits and '-'
+                                    final heightRegex = RegExp(r'h\d+-');
+                                    // Replace 'h' followed by digits and '-' with 'h540-'
+                                    highResImageUrl = highResImageUrl
+                                        .replaceAll(heightRegex, 'h540-');
 
-                                  return Padding(
-                                    padding: const EdgeInsets.only(bottom: 15),
-                                    child: GestureDetector(
-                                      onTap: () {
-                                        Get.to(
-                                          () => SongDetailPage(
-                                              item,
-                                              combinedArtistNames,
-                                              highResImageUrl),
-                                          transition: Transition.rightToLeft,
-                                          duration:
-                                              const Duration(milliseconds: 300),
-                                        );
-                                      },
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.max,
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.center,
-                                        children: [
-                                          Container(
-                                            width: 60,
-                                            height: 60,
-                                            decoration: BoxDecoration(
-                                              borderRadius:
-                                                  BorderRadius.circular(12.0),
-                                              color: const Color.fromRGBO(
-                                                  147, 65, 78, 1),
-                                            ),
-                                            child:
-                                                // SizedBox.shrink(),
-                                                Image(
-                                              image: NetworkImage(
-                                                item['thumbnails'].last['url'],
+                                    return Padding(
+                                      padding:
+                                          const EdgeInsets.only(bottom: 15),
+                                      child: GestureDetector(
+                                        onTap: () {
+                                          Get.to(
+                                            () => SongDetailPage(
+                                                item,
+                                                combinedArtistNames,
+                                                highResImageUrl),
+                                            transition: Transition.rightToLeft,
+                                            duration: const Duration(
+                                                milliseconds: 300),
+                                          );
+                                        },
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.max,
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.center,
+                                          children: [
+                                            Container(
+                                              width: 60,
+                                              height: 60,
+                                              decoration: BoxDecoration(
+                                                borderRadius:
+                                                    BorderRadius.circular(12.0),
+                                                color: const Color.fromRGBO(
+                                                    147, 65, 78, 1),
                                               ),
-                                              fit: BoxFit.cover,
-                                            ),
-                                          ),
-                                          const SizedBox(width: 12.0),
-                                          Expanded(
-                                            child: Column(
-                                              mainAxisSize: MainAxisSize.min,
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
-                                              children: [
-                                                Text(
-                                                  // item.title,
-                                                  item['title'] ?? 'N/A',
-                                                  maxLines: 1,
-                                                  overflow:
-                                                      TextOverflow.ellipsis,
-                                                  style: const TextStyle(
-                                                      color: Colors.white,
-                                                      fontSize: 16.0,
-                                                      fontWeight:
-                                                          FontWeight.w900),
+                                              child:
+                                                  // SizedBox.shrink(),
+                                                  Image(
+                                                image: NetworkImage(
+                                                  item['thumbnails']
+                                                      .last['url'],
                                                 ),
-                                                Row(
-                                                  children: [
-                                                    item['isExplicit']
-                                                        ? const Row(
-                                                            children: [
-                                                              ExplicitPage(),
-                                                              SizedBox(
-                                                                width: 4.0,
-                                                              ),
-                                                            ],
-                                                          )
-                                                        : const SizedBox
-                                                            .shrink(),
-                                                    Flexible(
-                                                      child: Text(
-                                                        '${combinedArtistNames?.isEmpty ?? true ? 'Unknown Artist' : combinedArtistNames} • ${item['duration']}',
-                                                        maxLines: 1,
-                                                        overflow: TextOverflow
-                                                            .ellipsis,
-                                                        style: const TextStyle(
-                                                          color: Colors.white70,
-                                                          fontWeight:
-                                                              FontWeight.bold,
+                                                fit: BoxFit.cover,
+                                              ),
+                                            ),
+                                            const SizedBox(width: 12.0),
+                                            Expanded(
+                                              child: Column(
+                                                mainAxisSize: MainAxisSize.min,
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  Text(
+                                                    // item.title,
+                                                    item['title'] ?? 'N/A',
+                                                    maxLines: 1,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                    style: const TextStyle(
+                                                        color: Colors.white,
+                                                        fontSize: 16.0,
+                                                        fontWeight:
+                                                            FontWeight.bold),
+                                                  ),
+                                                  Row(
+                                                    children: [
+                                                      item['isExplicit']
+                                                          ? const Row(
+                                                              children: [
+                                                                ExplicitPage(),
+                                                                SizedBox(
+                                                                  width: 4.0,
+                                                                ),
+                                                              ],
+                                                            )
+                                                          : const SizedBox
+                                                              .shrink(),
+                                                      Flexible(
+                                                        child: Text(
+                                                          '${combinedArtistNames?.isEmpty ?? true ? 'Unknown Artist' : combinedArtistNames} • ${item['duration']}',
+                                                          maxLines: 1,
+                                                          overflow: TextOverflow
+                                                              .ellipsis,
+                                                          style:
+                                                              const TextStyle(
+                                                            color:
+                                                                Colors.white60,
+                                                            fontWeight:
+                                                                FontWeight.w700,
+                                                          ),
                                                         ),
                                                       ),
-                                                    ),
-                                                  ],
-                                                ),
-                                              ],
-                                            ),
-                                          )
-                                        ],
+                                                    ],
+                                                  ),
+                                                ],
+                                              ),
+                                            )
+                                          ],
+                                        ),
                                       ),
-                                    ),
-                                  );
-                                },
+                                    );
+                                  },
+                                ),
                               )
                             : const SizedBox.shrink(),
                       ),
