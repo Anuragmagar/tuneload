@@ -13,7 +13,7 @@ class Topbar extends StatelessWidget {
         //App bar
         GestureDetector(
           onTap: () {
-            this.mainkey.currentState!.openDrawer();
+            mainkey.currentState!.openDrawer();
           },
           child: Container(
             decoration: BoxDecoration(

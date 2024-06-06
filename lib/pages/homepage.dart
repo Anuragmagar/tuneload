@@ -1,6 +1,8 @@
+import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:get/get.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:tuneload/pages/greeting.dart';
@@ -43,7 +45,7 @@ class _HomepageState extends ConsumerState<Homepage> {
       });
       getRecommendation();
     } catch (e) {
-      print(e);
+      debugPrint("$e");
     }
   }
 
@@ -66,7 +68,6 @@ class _HomepageState extends ConsumerState<Homepage> {
       );
       final body = json.decode(response.body);
       final errorstat = body['error'];
-      print(body);
       if (errorstat != null) {
         setState(() {
           hasError = true;
@@ -86,13 +87,38 @@ class _HomepageState extends ConsumerState<Homepage> {
       ref.read(recommendationProvider.notifier).addTasks(results);
       ref.read(isRecommendLoaded.notifier).state = true;
     } catch (e) {
-      print(e);
+      debugPrint('$e');
+    }
+  }
+
+  void getPermission() async {
+    final DeviceInfoPlugin info = DeviceInfoPlugin();
+    final AndroidDeviceInfo androidInfo = await info.androidInfo;
+    final int androidVersion = int.parse(androidInfo.version.release);
+
+    if (androidVersion < 13) {
+      var status = await Permission.storage.status;
+
+      if (!status.isGranted) {
+        await Permission.storage.request();
+      }
+    } else {
+      var status = await Permission.audio.status;
+      var notistatus = await Permission.notification.status;
+      if (!status.isGranted) {
+        await Permission.audio.request();
+      }
+      if (!notistatus.isGranted) {
+        await Permission.notification.request();
+      }
     }
   }
 
   @override
   void initState() {
     super.initState();
+
+    getPermission();
 
     var reco = ref.read(isRecommendLoaded);
     if (reco != true) {

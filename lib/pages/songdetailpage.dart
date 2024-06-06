@@ -1,8 +1,6 @@
 import 'dart:io';
 import 'dart:typed_data';
 import 'dart:ui';
-// import 'package:background_downloader/background_downloader.dart';
-
 import 'package:animated_digit/animated_digit.dart';
 import 'package:background_downloader/background_downloader.dart';
 import 'package:ffmpeg_kit_flutter_full_gpl/ffmpeg_kit.dart';
@@ -16,16 +14,13 @@ import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import 'package:media_scanner/media_scanner.dart';
 import 'package:metadata_god/metadata_god.dart';
-// import 'package:metadata_god/metadata_god.dart';
 import 'package:palette_generator/palette_generator.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:text_scroll/text_scroll.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:tuneload/local_notifications.dart';
-import 'package:tuneload/models/tasks.dart';
 import 'package:tuneload/pages/explicit.dart';
-import 'package:tuneload/providers/tasks_provider.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 
@@ -109,7 +104,6 @@ class _SongDetailPageState extends ConsumerState<SongDetailPage> {
   static Future<String> getExternalDocumentPath() async {
     final DeviceInfoPlugin info = DeviceInfoPlugin();
     final AndroidDeviceInfo androidInfo = await info.androidInfo;
-    print('releaseVersion : ${androidInfo.version.release}');
     final int androidVersion = int.parse(androidInfo.version.release);
 
     if (androidVersion < 13) {
@@ -137,7 +131,6 @@ class _SongDetailPageState extends ConsumerState<SongDetailPage> {
     }
 
     final exPath = directory.path;
-    print("Saved Path: $exPath");
     await Directory(exPath).create(recursive: true);
     return exPath;
   }
@@ -160,7 +153,6 @@ class _SongDetailPageState extends ConsumerState<SongDetailPage> {
       final returnCode = await session.getReturnCode();
 
       if (ReturnCode.isSuccess(returnCode)) {
-        print("Ffmpeg process completed with rc $returnCode");
         await File(inputFile).delete();
 
         await MetadataGod.writeMetadata(
@@ -191,7 +183,6 @@ class _SongDetailPageState extends ConsumerState<SongDetailPage> {
         final loadmsg = await MediaScanner.loadMedia(
           path: "$filePath/${widget.item['title']} - ${widget.artists}.mp3",
         );
-        print(loadmsg);
 
         LocalNotification.showSimpleNotification(
             title: "Download complete!",
@@ -200,10 +191,8 @@ class _SongDetailPageState extends ConsumerState<SongDetailPage> {
       } else if (ReturnCode.isCancel(returnCode)) {
         // CANCEL
       } else {
-        print("Error on codec");
         FFmpegKitConfig.enableLogCallback((log) {
-          final message = log.getMessage();
-          print(message);
+          // final message = log.getMessage();
         });
       }
     });
@@ -242,34 +231,26 @@ class _SongDetailPageState extends ConsumerState<SongDetailPage> {
         allowPause: true,
       );
 
-      final List<Tasks> tasks = ref.watch(tasksNotifierProvider).toList();
+      final TaskStatusUpdate result = await FileDownloader()
+          .download(task, onProgress: (progress) {}, onStatus: (status) {});
 
-      final TaskStatusUpdate result = await FileDownloader().download(task,
-          onProgress: (progress) {
-            print('Progress: ${progress * 100}%');
-          },
-          onStatus: (status) => print('Status: $status'));
+      // switch (result.status) {
+      //   case TaskStatus.complete:
+      //   case TaskStatus.canceled:
+      //     print('Download was canceled');
 
-      switch (result.status) {
-        case TaskStatus.complete:
-        case TaskStatus.canceled:
-          print('Download was canceled');
+      //   case TaskStatus.paused:
+      //     print('Download was paused');
 
-        case TaskStatus.paused:
-          print('Download was paused');
-
-        default:
-          print('Download not successful');
-      }
+      //   default:
+      //     print('Download not successful');
+      // }
 
       final ddpath = await FileDownloader()
           .moveToSharedStorage(task, SharedStorage.downloads,
               directory: "TuneLoad")
           .then(
         (value) async {
-          print(value);
-          print("Moved successufllly");
-
           LocalNotification.showIndeterminateProgressNotification(
             id: int.parse(widget.item['duration_seconds'].toString()) + 1,
             title: "Converting & embedding metadata ...",
@@ -280,7 +261,7 @@ class _SongDetailPageState extends ConsumerState<SongDetailPage> {
         },
       );
     } catch (e) {
-      print(e);
+      debugPrint("$e");
     }
   }
 
@@ -323,7 +304,6 @@ class _SongDetailPageState extends ConsumerState<SongDetailPage> {
 
   void removeFavourite(dynamic removeKey) async {
     final favouritesBox = Hive.box('favourites');
-    print(removeKey);
     favouritesBox.delete(removeKey);
     setState(() {
       isOnFavourite = false;

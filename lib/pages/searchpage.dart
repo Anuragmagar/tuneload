@@ -62,7 +62,7 @@ class _SearchPageState extends State<SearchPage> {
           // print(results);
         });
       } catch (e) {
-        print(e);
+        debugPrint("$e");
       }
     }
   }
@@ -305,7 +305,6 @@ class _SearchPageState extends State<SearchPage> {
                                   itemCount: results.length,
                                   itemBuilder: (context, index) {
                                     final item = results[index];
-                                    print(item);
                                     // print(item.thumbnails);
                                     // final item =
                                     //     results?.items[index];

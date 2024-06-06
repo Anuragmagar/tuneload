@@ -10,8 +10,8 @@ class LocalNotification {
         AndroidInitializationSettings('download');
     final DarwinInitializationSettings initializationSettingsDarwin =
         DarwinInitializationSettings(
-            onDidReceiveLocalNotification: (id, title, body, payload) => null);
-    final LinuxInitializationSettings initializationSettingsLinux =
+            onDidReceiveLocalNotification: (id, title, body, payload) => ());
+    const LinuxInitializationSettings initializationSettingsLinux =
         LinuxInitializationSettings(defaultActionName: 'Open notification');
     final InitializationSettings initializationSettings =
         InitializationSettings(
@@ -19,7 +19,7 @@ class LocalNotification {
             iOS: initializationSettingsDarwin,
             linux: initializationSettingsLinux);
     _flutterLocalNotificationsPlugin.initialize(initializationSettings,
-        onDidReceiveNotificationResponse: (details) => null);
+        onDidReceiveNotificationResponse: (details) => ());
   }
 
   static Future showSimpleNotification({
