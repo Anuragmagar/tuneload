@@ -186,7 +186,7 @@ class _SongDetailPageState extends ConsumerState<SongDetailPage> {
 
         LocalNotification.showSimpleNotification(
             title: "Download complete!",
-            body: "",
+            body: "${widget.item['title']} - ${widget.artists}.mp3",
             payload: "thisi s simple data");
       } else if (ReturnCode.isCancel(returnCode)) {
         // CANCEL
@@ -234,32 +234,32 @@ class _SongDetailPageState extends ConsumerState<SongDetailPage> {
       final TaskStatusUpdate result = await FileDownloader()
           .download(task, onProgress: (progress) {}, onStatus: (status) {});
 
-      // switch (result.status) {
-      //   case TaskStatus.complete:
-      //   case TaskStatus.canceled:
-      //     print('Download was canceled');
+      switch (result.status) {
+        case TaskStatus.complete:
+          final ddpath = await FileDownloader()
+              .moveToSharedStorage(task, SharedStorage.downloads,
+                  directory: "TuneLoad")
+              .then(
+            (value) async {
+              LocalNotification.showIndeterminateProgressNotification(
+                id: int.parse(widget.item['duration_seconds'].toString()) + 1,
+                title: "Converting & embedding metadata ...",
+                body: "This may take a few seconds",
+              );
+              print("ddpath value $value");
 
-      //   case TaskStatus.paused:
-      //     print('Download was paused');
-
-      //   default:
-      //     print('Download not successful');
-      // }
-
-      final ddpath = await FileDownloader()
-          .moveToSharedStorage(task, SharedStorage.downloads,
-              directory: "TuneLoad")
-          .then(
-        (value) async {
-          LocalNotification.showIndeterminateProgressNotification(
-            id: int.parse(widget.item['duration_seconds'].toString()) + 1,
-            title: "Converting & embedding metadata ...",
-            body: "This may take a few seconds",
+              attachMetadata(value!);
+            },
           );
+        case TaskStatus.canceled:
+          print('Download was canceled');
 
-          attachMetadata(value!);
-        },
-      );
+        case TaskStatus.paused:
+          print('Download was paused');
+
+        default:
+          print('Download not successful');
+      }
     } catch (e) {
       debugPrint("$e");
     }
