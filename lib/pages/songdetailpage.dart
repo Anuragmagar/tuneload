@@ -224,8 +224,6 @@ class _SongDetailPageState extends ConsumerState<SongDetailPage> {
       final List<AudioOnlyStreamInfo> sortedStreamInfo =
           manifest.audioOnly.sortByBitrate();
 
-      print(sortedStreamInfo.first.url.toString());
-
       LocalNotification.cancelNotification(
           int.parse(widget.item['duration_seconds'].toString()));
 
@@ -635,12 +633,15 @@ class _SongDetailPageState extends ConsumerState<SongDetailPage> {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             // For music streaming
+                            if (loading)
+                              const CircularProgressIndicator(
+                                  color: Colors.white),
                             if (!loading)
                               playing
                                   ? IconButton(
                                       onPressed: pauseMusic,
                                       icon: const Icon(
-                                        PhosphorIconsRegular.pause,
+                                        PhosphorIconsFill.pause,
                                         color: Colors.white,
                                       ),
                                     )

@@ -5,11 +5,14 @@ import 'package:get/get.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:shimmer/shimmer.dart';
+import 'package:tuneload/local_notifications.dart';
 import 'package:tuneload/pages/greeting.dart';
 import 'package:tuneload/pages/searchpage.dart';
 import 'dart:convert'; // required to encode/decode json data
 import 'package:http/http.dart' as http;
+import 'package:tuneload/pages/songdetailpage.dart';
 import 'package:tuneload/providers/recommendation_provider.dart';
+import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 
 class Homepage extends ConsumerStatefulWidget {
   const Homepage({super.key});
@@ -19,6 +22,8 @@ class Homepage extends ConsumerStatefulWidget {
 }
 
 class _HomepageState extends ConsumerState<Homepage> {
+  final YoutubeExplode yt = YoutubeExplode();
+
   Map<String, dynamic> results = {};
   bool isSearching = true;
   bool isSearchTap = false;
@@ -111,6 +116,53 @@ class _HomepageState extends ConsumerState<Homepage> {
       if (!notistatus.isGranted) {
         await Permission.notification.request();
       }
+    }
+  }
+
+  void songDetailpageRouter(String item) async {
+    LocalNotification.showIndeterminateProgressNotification(
+      id: 3456,
+      title: "Getting music",
+      body: "You'll be redirected after getting the music url",
+    );
+    try {
+      final response = await http.post(
+        Uri.parse("https://tuneload.anuragmagar.com.np/"),
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: {
+          "song": item,
+        },
+      );
+      final value = json.decode(response.body);
+      // List val = value[0]['artists'].toList();
+      print(value[0]);
+      print(value[0]['album']);
+      List<dynamic> artistNames = value[0]['artists'] != null
+          ? value[0]['artists']
+              .map((artist) => artist['name'] ?? 'N/A')
+              .toList()
+          : [];
+      String combinedArtistNames = artistNames.join(', ');
+
+      final widthRegex = RegExp(r'w\d+-');
+      // Replace 'w' followed by digits and '-' with 'w540-'
+      String highResImageUrl =
+          value[0]['thumbnails'].last['url'].replaceAll(widthRegex, 'w540-');
+
+      // Use regular expression to find 'h' followed by digits and '-'
+      final heightRegex = RegExp(r'h\d+-');
+      // Replace 'h' followed by digits and '-' with 'h540-'
+      highResImageUrl = highResImageUrl.replaceAll(heightRegex, 'h540-');
+      LocalNotification.cancelNotification(3456);
+      Get.to(
+        () => SongDetailPage(value[0], combinedArtistNames, highResImageUrl),
+        transition: Transition.downToUp,
+        duration: const Duration(milliseconds: 100),
+      );
+    } catch (e) {
+      debugPrint("$e");
     }
   }
 
@@ -298,12 +350,8 @@ class _HomepageState extends ConsumerState<Homepage> {
                     String combinedArtistNames = artistNames.join(', ');
 
                     return GestureDetector(
-                      onTap: () {
-                        Get.to(
-                          () => const SearchPage(),
-                          transition: Transition.downToUp,
-                          duration: const Duration(milliseconds: 100),
-                        );
+                      onTap: () async {
+                        songDetailpageRouter(item['name']);
                       },
                       child: SizedBox(
                         width: 200,
