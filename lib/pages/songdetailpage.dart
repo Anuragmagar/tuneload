@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'dart:ui';
 import 'package:animated_digit/animated_digit.dart';
+import 'package:audio_video_progress_bar/audio_video_progress_bar.dart';
 import 'package:background_downloader/background_downloader.dart';
 import 'package:ffmpeg_kit_flutter_full_gpl/ffmpeg_kit.dart';
 import 'package:ffmpeg_kit_flutter_full_gpl/ffmpeg_kit_config.dart';
@@ -12,6 +13,7 @@ import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
+import 'package:just_audio/just_audio.dart';
 import 'package:media_scanner/media_scanner.dart';
 import 'package:metadata_god/metadata_god.dart';
 import 'package:palette_generator/palette_generator.dart';
@@ -20,9 +22,11 @@ import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:text_scroll/text_scroll.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:tuneload/local_notifications.dart';
+import 'package:tuneload/manager/audio_player_manager.dart';
 import 'package:tuneload/pages/explicit.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 import 'package:device_info_plus/device_info_plus.dart';
+import 'package:rxdart/rxdart.dart' as rxdart;
 
 class SongDetailPage extends ConsumerStatefulWidget {
   SongDetailPage(this.item, this.artists, this.highResImageUrl, {super.key});
@@ -36,6 +40,9 @@ class SongDetailPage extends ConsumerStatefulWidget {
 
 class _SongDetailPageState extends ConsumerState<SongDetailPage> {
   final YoutubeExplode yt = YoutubeExplode();
+  final player = AudioPlayer();
+  late Stream<DurationState> durationState;
+
   Video? currentSong;
   String likes = "0";
   String views = "0";
@@ -43,6 +50,9 @@ class _SongDetailPageState extends ConsumerState<SongDetailPage> {
   String author = "Unknown Artist";
   bool isOnFavourite = false;
   dynamic favouriteKey = '';
+
+  bool playing = false;
+  bool loading = true;
 
   List<Color> colors = [
     const Color(0xFF101115),
@@ -214,7 +224,7 @@ class _SongDetailPageState extends ConsumerState<SongDetailPage> {
       final List<AudioOnlyStreamInfo> sortedStreamInfo =
           manifest.audioOnly.sortByBitrate();
 
-      // print(sortedStreamInfo.first.url.toString());
+      print(sortedStreamInfo.first.url.toString());
 
       LocalNotification.cancelNotification(
           int.parse(widget.item['duration_seconds'].toString()));
@@ -283,7 +293,16 @@ class _SongDetailPageState extends ConsumerState<SongDetailPage> {
     Video video = await yt.videos
         .get('https://youtube.com/watch?v=${widget.item['videoId']}');
     var f = NumberFormat.compact(locale: "en_US");
+    final StreamManifest manifest =
+        await yt.videos.streamsClient.getManifest(widget.item['videoId']);
+    final List<AudioOnlyStreamInfo> sortedStreamInfo =
+        manifest.audioOnly.sortByBitrate();
+
+    print(sortedStreamInfo.first.url.toString());
+    await player.setUrl(sortedStreamInfo.first.url.toString());
+
     setState(() {
+      loading = false;
       currentSong = video;
       likes = f.format(video.engagement.likeCount);
       views = f.format(video.engagement.viewCount);
@@ -324,6 +343,20 @@ class _SongDetailPageState extends ConsumerState<SongDetailPage> {
     }).toList();
   }
 
+  void streamMusic() async {
+    player.play();
+    setState(() {
+      playing = true;
+    });
+  }
+
+  void pauseMusic() async {
+    await player.pause();
+    setState(() {
+      playing = false;
+    });
+  }
+
   @override
   void initState() {
     super.initState();
@@ -342,9 +375,27 @@ class _SongDetailPageState extends ConsumerState<SongDetailPage> {
       //     const TaskNotification('Download {filename}', 'Download complete'),
       error: const TaskNotification('Error', '{numFailed}/{numTotal} failed'),
       progressBar: true,
-    ); // dog can also open directly from tap
+    );
 
-    FileDownloader().trackTasks();
+    durationState =
+        rxdart.Rx.combineLatest2<Duration, PlaybackEvent, DurationState>(
+      player.positionStream,
+      player.playbackEventStream,
+      (position, playbackEvent) => DurationState(
+        progress: position,
+        buffered: playbackEvent.bufferedPosition,
+        total: playbackEvent.duration,
+      ),
+    ).asBroadcastStream();
+  }
+
+  @override
+  void dispose() {
+    // TODO: implement dispose
+    player.dispose();
+    durationState.drain();
+
+    super.dispose();
   }
 
   @override
@@ -583,6 +634,37 @@ class _SongDetailPageState extends ConsumerState<SongDetailPage> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
+                            // For music streaming
+                            if (!loading)
+                              playing
+                                  ? IconButton(
+                                      onPressed: pauseMusic,
+                                      icon: const Icon(
+                                        PhosphorIconsRegular.pause,
+                                        color: Colors.white,
+                                      ),
+                                    )
+                                  : IconButton(
+                                      onPressed: streamMusic,
+                                      icon: const Icon(
+                                        PhosphorIconsBold.play,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+
+                            const SizedBox(width: 10),
+                            FilledButton.icon(
+                              onPressed: () {
+                                downloadSong();
+                              },
+                              icon:
+                                  const Icon(PhosphorIconsBold.downloadSimple),
+                              label: const Text("Download Now"),
+                              style: ButtonStyle(
+                                backgroundColor: WidgetStateProperty.all<Color>(
+                                    vibrantColor),
+                              ),
+                            ),
                             isOnFavourite
                                 ? IconButton(
                                     onPressed: () async {
@@ -605,21 +687,48 @@ class _SongDetailPageState extends ConsumerState<SongDetailPage> {
                                     icon: const Icon(PhosphorIconsBold.heart),
                                     color: Colors.white,
                                   ),
-                            FilledButton.icon(
-                              onPressed: () {
-                                downloadSong();
-                              },
-                              icon:
-                                  const Icon(PhosphorIconsBold.downloadSimple),
-                              label: const Text("Download Now"),
-                              style: ButtonStyle(
-                                backgroundColor: WidgetStateProperty.all<Color>(
-                                    vibrantColor),
-                              ),
-                            ),
                           ],
                         ),
                         //buttons end
+
+                        const SizedBox(
+                          height: 30,
+                        ),
+
+                        StreamBuilder<DurationState>(
+                          stream: durationState,
+                          builder: (context, snapshot) {
+                            final durationState = snapshot.data;
+                            final progress =
+                                durationState?.progress ?? Duration.zero;
+                            final buffered =
+                                durationState?.buffered ?? Duration.zero;
+                            final total = durationState?.total ?? Duration.zero;
+                            return playing
+                                ? Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 8.0),
+                                    child: ProgressBar(
+                                      progress: progress,
+                                      buffered: buffered,
+                                      total: total,
+                                      onSeek: (value) {
+                                        player.seek(value);
+                                      },
+                                      barHeight: 5,
+                                      thumbRadius: 7,
+                                      progressBarColor: Colors.white,
+                                      thumbColor: Colors.white,
+                                      bufferedBarColor: Colors.grey,
+                                      baseBarColor: Colors.white24,
+                                      thumbGlowRadius: 20,
+                                      timeLabelTextStyle:
+                                          const TextStyle(color: Colors.white),
+                                    ),
+                                  )
+                                : const SizedBox.shrink();
+                          },
+                        ),
 
                         const SizedBox(
                           height: 30,

@@ -59,6 +59,9 @@ dependencies:
   hive_flutter: ^1.1.0
   on_audio_query: ^2.9.0
   flutter_native_splash: ^2.4.0
+  just_audio: ^0.9.38
+  audio_video_progress_bar: ^2.0.3
+  rxdart: ^0.27.7
 
 flutter_launcher_icons:
   android: "launcher_icon"
