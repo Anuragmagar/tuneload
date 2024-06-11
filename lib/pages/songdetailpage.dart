@@ -1,12 +1,16 @@
+import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 import 'dart:ui';
 import 'package:animated_digit/animated_digit.dart';
 import 'package:audio_video_progress_bar/audio_video_progress_bar.dart';
+import 'package:audiotagger/audiotagger.dart';
+import 'package:audiotagger/models/tag.dart';
 import 'package:background_downloader/background_downloader.dart';
 import 'package:ffmpeg_kit_flutter_full_gpl/ffmpeg_kit.dart';
 import 'package:ffmpeg_kit_flutter_full_gpl/ffmpeg_kit_config.dart';
 import 'package:ffmpeg_kit_flutter_full_gpl/return_code.dart';
+import 'package:flip_card/flip_card.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:http/http.dart' as http;
@@ -19,6 +23,7 @@ import 'package:metadata_god/metadata_god.dart';
 import 'package:palette_generator/palette_generator.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
+import 'package:shimmer/shimmer.dart';
 import 'package:text_scroll/text_scroll.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:tuneload/local_notifications.dart';
@@ -27,6 +32,10 @@ import 'package:tuneload/pages/explicit.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:rxdart/rxdart.dart' as rxdart;
+import 'package:flutter_lyric/lyric_ui/lyric_ui.dart';
+import 'package:flutter_lyric/lyric_ui/ui_netease.dart';
+import 'package:flutter_lyric/lyrics_model_builder.dart';
+import 'package:flutter_lyric/lyrics_reader_widget.dart';
 
 class SongDetailPage extends ConsumerStatefulWidget {
   SongDetailPage(this.item, this.artists, this.highResImageUrl, {super.key});
@@ -54,6 +63,15 @@ class _SongDetailPageState extends ConsumerState<SongDetailPage> {
   bool playing = false;
   bool loading = true;
 
+  bool loadingLyrics = true;
+  GlobalKey<FlipCardState> flipCardKey = GlobalKey<FlipCardState>();
+  Map<String, dynamic> lyrics = {};
+  var lyricUI = UINetease(
+    highlight: false,
+    defaultSize: 20,
+    // otherMainSize: 25,
+    lyricAlign: LyricAlign.CENTER,
+  );
   List<Color> colors = [
     const Color(0xFF101115),
     Colors.black,
@@ -165,6 +183,10 @@ class _SongDetailPageState extends ConsumerState<SongDetailPage> {
       if (ReturnCode.isSuccess(returnCode)) {
         await File(inputFile).delete();
 
+        if (lyrics.isNotEmpty) {
+          getLyrics;
+        }
+
         await MetadataGod.writeMetadata(
           file: outputFile,
           metadata: Metadata(
@@ -184,6 +206,28 @@ class _SongDetailPageState extends ConsumerState<SongDetailPage> {
             ),
           ),
         );
+
+        final tagger = Audiotagger();
+        if (lyrics['syncedLyrics'] != null) {
+          final result = await tagger.writeTags(
+            path: outputFile,
+            tag: Tag(
+              lyrics: utf8.decode(lyrics['syncedLyrics'].codeUnits),
+            ),
+          );
+          print('Success $result');
+        } else if (lyrics['plainLyrics'] != null) {
+          final result = await tagger.writeTags(
+            path: outputFile,
+            tag: Tag(
+              lyrics: utf8.decode(lyrics['plainLyrics'].codeUnits),
+            ),
+          );
+          print('Success $result');
+        } else {
+          print('No lyrics to write');
+        }
+
         await File(outputFile).rename(
             "$filePath/${widget.item['title']} - ${widget.artists}.mp3");
 
@@ -355,6 +399,50 @@ class _SongDetailPageState extends ConsumerState<SongDetailPage> {
     });
   }
 
+  void getLyrics() async {
+    try {
+      final queryParameters = {
+        'track_name': widget.item['title'],
+        'artist_name': widget.artists,
+        'album_name': widget.item['album']['name'],
+        'duration': '${widget.item['duration_seconds']}',
+      };
+      final uri = Uri.https('lrclib.net', '/api/get', queryParameters);
+      final response = await http.get(uri);
+      if (response.statusCode == 200) {
+        setState(() {
+          lyrics = jsonDecode(response.body);
+          print("lyrics $lyrics");
+          loadingLyrics = false;
+        });
+      } else {
+        print("Tyring with multiple query");
+
+        final queryParameters = {
+          'track_name': widget.item['title'],
+          'artist_name': widget.artists,
+          'album_name': widget.item['album']['name'],
+          'duration': '${widget.item['duration_seconds']}',
+        };
+        final uri = Uri.https('lrclib.net', '/api/search', queryParameters);
+        final response = await http.get(uri);
+        if (response.statusCode == 200) {
+          setState(() {
+            // print(response.body);
+            if (jsonDecode(response.body).length > 0) {
+              lyrics = jsonDecode(response.body)[0];
+            }
+            // print(jsonDecode(response.body)[0]);
+            print("lyrics $lyrics");
+            loadingLyrics = false;
+          });
+        }
+      }
+    } catch (e) {
+      print(e);
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -519,6 +607,34 @@ class _SongDetailPageState extends ConsumerState<SongDetailPage> {
                                   ],
                                 ),
                               ),
+                              Container(
+                                decoration: BoxDecoration(
+                                  border: Border.all(
+                                    color:
+                                        const Color.fromRGBO(139, 139, 139, 1),
+                                    width: 1,
+                                  ),
+                                  borderRadius: BorderRadius.circular(10),
+                                  // color:
+                                  //     const Color.fromRGBO(217, 217, 217, 0.25),
+                                ),
+                                child: GestureDetector(
+                                  onTap: () {
+                                    setState(() {
+                                      getLyrics();
+                                    });
+                                    flipCardKey.currentState?.toggleCard();
+                                  },
+                                  child: const Padding(
+                                    padding: EdgeInsets.all(8.0),
+                                    child: Icon(
+                                      PhosphorIconsBold.musicNotes,
+                                      size: 18,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ),
+                              ),
                             ],
                           ),
                         ),
@@ -527,25 +643,129 @@ class _SongDetailPageState extends ConsumerState<SongDetailPage> {
                         const SizedBox(
                           height: 30,
                         ),
-                        Container(
-                          color: vibrantColor,
-                          width: 300,
-                          height: 300,
-                          child: Image(
-                            image: NetworkImage(
-                              widget.highResImageUrl,
+
+                        FlipCard(
+                          key: flipCardKey,
+                          flipOnTouch: false,
+                          fill: Fill
+                              .fillBack, // Fill the back side of the card to make in the same size as the front.
+                          direction: FlipDirection.HORIZONTAL, // default
+                          side:
+                              CardSide.FRONT, // The side to initially display.
+                          front: GestureDetector(
+                            onTap: () async {
+                              getLyrics();
+                              flipCardKey.currentState?.toggleCard();
+                            },
+                            child: Container(
+                              color: vibrantColor,
+                              width: 300,
+                              height: 300,
+                              child: Image(
+                                image: NetworkImage(
+                                  widget.highResImageUrl,
+                                ),
+                                fit: BoxFit.contain,
+                                loadingBuilder:
+                                    (context, child, loadingProgress) {
+                                  if (loadingProgress == null) return child;
+                                  return const Center(
+                                    child: CircularProgressIndicator(),
+                                  );
+                                },
+                                errorBuilder: (BuildContext context,
+                                    Object exception, StackTrace? stackTrace) {
+                                  return const Text('Failed to load image');
+                                },
+                              ),
                             ),
-                            fit: BoxFit.contain,
-                            loadingBuilder: (context, child, loadingProgress) {
-                              if (loadingProgress == null) return child;
-                              return const Center(
-                                child: CircularProgressIndicator(),
-                              );
-                            },
-                            errorBuilder: (BuildContext context,
-                                Object exception, StackTrace? stackTrace) {
-                              return const Text('Failed to load image');
-                            },
+                          ),
+                          back: GestureDetector(
+                            onTap: () => flipCardKey.currentState?.toggleCard(),
+                            child: Container(
+                              child: loadingLyrics
+                                  ? SizedBox(
+                                      width: 300.0,
+                                      height: 300.0,
+                                      child: Shimmer.fromColors(
+                                        baseColor: Colors.grey.shade300,
+                                        highlightColor: Colors.grey.shade100,
+                                        child: Container(
+                                          color: Colors.white70,
+                                        ),
+                                      ),
+                                    )
+                                  : StreamBuilder<DurationState>(
+                                      stream: durationState,
+                                      builder: (context, snapshot) {
+                                        final durationState = snapshot.data;
+                                        final progress =
+                                            durationState?.progress ??
+                                                Duration.zero;
+                                        var syncedLyrics =
+                                            lyrics['syncedLyrics'];
+
+                                        if (syncedLyrics == null) {
+                                          if (lyrics.isEmpty ||
+                                              lyrics['plainLyrics'] == null) {
+                                            return const Center(
+                                              child: Scrollbar(
+                                                child: SingleChildScrollView(
+                                                  child: Text(
+                                                    "No lyrics found.",
+                                                    style: TextStyle(
+                                                      fontSize: 18,
+                                                      // fontWeight: FontWeight.bold,
+                                                      color: Colors.white,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                            );
+                                          } else {
+                                            return Center(
+                                              child: Scrollbar(
+                                                child: SingleChildScrollView(
+                                                  child: Text(
+                                                    lyrics['plainLyrics'],
+                                                    style: const TextStyle(
+                                                      fontSize: 18,
+                                                      // fontWeight: FontWeight.bold,
+                                                      color: Colors.white,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                            );
+                                          }
+                                        } else {
+                                          var lyricModel =
+                                              LyricsModelBuilder.create()
+                                                  .bindLyricToMain(utf8.decode(
+                                                      lyrics['syncedLyrics']
+                                                          .codeUnits))
+                                                  .getModel();
+                                          return Expanded(
+                                            child: LyricsReader(
+                                              model: lyricModel,
+                                              position: progress.inMilliseconds
+                                                  .toInt(),
+                                              lyricUi: lyricUI,
+                                              playing: false,
+                                              emptyBuilder: () => const Center(
+                                                child: Text(
+                                                  "No lyrics",
+                                                  style: TextStyle(
+                                                      fontWeight:
+                                                          FontWeight.bold),
+                                                ),
+                                              ),
+                                            ),
+                                          );
+                                        }
+                                      },
+                                    ),
+                            ),
                           ),
                         ),
 

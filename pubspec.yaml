@@ -62,6 +62,9 @@ dependencies:
   just_audio: ^0.9.38
   audio_video_progress_bar: ^2.0.3
   rxdart: ^0.27.7
+  audiotagger: ^2.2.1
+  flip_card: ^0.7.0
+  flutter_lyric: ^2.0.4+6
 
 flutter_launcher_icons:
   android: "launcher_icon"
@@ -116,6 +119,13 @@ flutter:
         - asset: assets/fonts/Circular-Bold.otf
           weight: 700
         - asset: assets/fonts/Circular-Black.otf
+          weight: 900
+    - family: Notosans
+      fonts:
+        - asset: assets/fonts/NotoSans-Regular.ttf
+        - asset: assets/fonts/NotoSans-Bold.ttf
+          weight: 700
+        - asset: assets/fonts/NotoSans-Black.ttf
           weight: 900
   #
   # For details regarding fonts from package dependencies,

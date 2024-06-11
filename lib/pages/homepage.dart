@@ -119,7 +119,7 @@ class _HomepageState extends ConsumerState<Homepage> {
     }
   }
 
-  void songDetailpageRouter(String item) async {
+  void songDetailpageRouter(String item, String artist) async {
     LocalNotification.showIndeterminateProgressNotification(
       id: 3456,
       title: "Getting music",
@@ -132,7 +132,7 @@ class _HomepageState extends ConsumerState<Homepage> {
           "Content-Type": "application/x-www-form-urlencoded",
         },
         body: {
-          "song": item,
+          "song": "$item $artist",
         },
       );
       final value = json.decode(response.body);
@@ -351,7 +351,8 @@ class _HomepageState extends ConsumerState<Homepage> {
 
                     return GestureDetector(
                       onTap: () async {
-                        songDetailpageRouter(item['name']);
+                        songDetailpageRouter(
+                            item['name'], item['artists'][0]['name']);
                       },
                       child: SizedBox(
                         width: 200,
