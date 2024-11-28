@@ -127,7 +127,8 @@ class _HomepageState extends ConsumerState<Homepage> {
     );
     try {
       final response = await http.post(
-        Uri.parse("https://tuneload.anuragmagar.com.np/"),
+        // Uri.parse("https://tuneload.anuragmagar.com.np/"),
+        Uri.parse("http://anuragmagar.pythonanywhere.com/"),
         headers: {
           "Content-Type": "application/x-www-form-urlencoded",
         },
@@ -137,8 +138,8 @@ class _HomepageState extends ConsumerState<Homepage> {
       );
       final value = json.decode(response.body);
       // List val = value[0]['artists'].toList();
-      print(value[0]);
-      print(value[0]['album']);
+      // print(value[0]);
+      // print(value[0]['album']);
       List<dynamic> artistNames = value[0]['artists'] != null
           ? value[0]['artists']
               .map((artist) => artist['name'] ?? 'N/A')

@@ -6,7 +6,8 @@ import 'package:animated_digit/animated_digit.dart';
 import 'package:audio_video_progress_bar/audio_video_progress_bar.dart';
 import 'package:audiotagger/audiotagger.dart';
 import 'package:audiotagger/models/tag.dart';
-import 'package:background_downloader/background_downloader.dart';
+// import 'package:background_downloader/background_downloader.dart';
+import 'package:flutter_file_downloader/flutter_file_downloader.dart';
 import 'package:ffmpeg_kit_flutter_full_gpl/ffmpeg_kit.dart';
 import 'package:ffmpeg_kit_flutter_full_gpl/ffmpeg_kit_config.dart';
 import 'package:ffmpeg_kit_flutter_full_gpl/return_code.dart';
@@ -271,47 +272,83 @@ class _SongDetailPageState extends ConsumerState<SongDetailPage> {
       LocalNotification.cancelNotification(
           int.parse(widget.item['duration_seconds'].toString()));
 
-      final task = DownloadTask(
+      getLyrics();
+
+      FileDownloader.downloadFile(
         url: sortedStreamInfo.first.url.toString(),
-        filename: "$fileName.webm",
-        displayName: widget.item['title'],
-        directory: filePath,
-        updates:
-            Updates.statusAndProgress, // request status and progress updates
-        requiresWiFi: true,
-        // retries: 5,
-        allowPause: true,
+        name: "$fileName.webm",
+        // name: "$fileName.mp3",
+        subPath: '/TuneLoad',
+        onProgress: (String? fileName, double progress) {
+          // setState(() {
+          //   downloadedBytes = progress / 100;
+          // });
+          print("progress $progress");
+        },
+        onDownloadCompleted: (String fpath) {
+          // MediaScanner.loadMedia(path: fpath);
+
+          // setState(() {
+          //   downloaded = true;
+          //   path = fpath;
+          // });
+
+          // ref.read(isVersionCheckedProvider.notifier).update((state) => true);
+
+          LocalNotification.showIndeterminateProgressNotification(
+            id: int.parse(widget.item['duration_seconds'].toString()) + 1,
+            title: "Converting & embedding metadata ...",
+            body: "This may take a few seconds",
+          );
+          // print("ddpath value $value");
+
+          attachMetadata(fpath);
+        },
+        onDownloadError: (String error) {},
+        downloadDestination: DownloadDestinations.publicDownloads,
       );
 
-      final TaskStatusUpdate result = await FileDownloader()
-          .download(task, onProgress: (progress) {}, onStatus: (status) {});
+      // final task = DownloadTask(
+      //   url: sortedStreamInfo.first.url.toString(),
+      //   filename: "$fileName.webm",
+      //   displayName: widget.item['title'],
+      //   directory: filePath,
+      //   updates:
+      //       Updates.statusAndProgress, // request status and progress updates
+      //   requiresWiFi: true,
+      //   // retries: 5,
+      //   allowPause: true,
+      // );
 
-      switch (result.status) {
-        case TaskStatus.complete:
-          final ddpath = await FileDownloader()
-              .moveToSharedStorage(task, SharedStorage.downloads,
-                  directory: "TuneLoad")
-              .then(
-            (value) async {
-              LocalNotification.showIndeterminateProgressNotification(
-                id: int.parse(widget.item['duration_seconds'].toString()) + 1,
-                title: "Converting & embedding metadata ...",
-                body: "This may take a few seconds",
-              );
-              print("ddpath value $value");
+      // final TaskStatusUpdate result = await FileDownloader()
+      //     .download(task, onProgress: (progress) {}, onStatus: (status) {});
 
-              attachMetadata(value!);
-            },
-          );
-        case TaskStatus.canceled:
-          print('Download was canceled');
+      // switch (result.status) {
+      //   case TaskStatus.complete:
+      //     final ddpath = await FileDownloader()
+      //         .moveToSharedStorage(task, SharedStorage.downloads,
+      //             directory: "TuneLoad")
+      //         .then(
+      //       (value) async {
+      //         LocalNotification.showIndeterminateProgressNotification(
+      //           id: int.parse(widget.item['duration_seconds'].toString()) + 1,
+      //           title: "Converting & embedding metadata ...",
+      //           body: "This may take a few seconds",
+      //         );
+      //         print("ddpath value $value");
 
-        case TaskStatus.paused:
-          print('Download was paused');
+      //         attachMetadata(value!);
+      //       },
+      //     );
+      //   case TaskStatus.canceled:
+      //     print('Download was canceled');
 
-        default:
-          print('Download not successful');
-      }
+      //   case TaskStatus.paused:
+      //     print('Download was paused');
+
+      //   default:
+      //     print('Download not successful');
+      // }
     } catch (e) {
       debugPrint("$e");
     }
@@ -451,17 +488,17 @@ class _SongDetailPageState extends ConsumerState<SongDetailPage> {
     isFavourite();
 
     // Registering a callback and configure notifications
-    FileDownloader().configureNotification(
-      // for the 'Download & Open' dog picture
-      // which uses 'download' which is not the .defaultGroup
-      // but the .await group so won't use the above config
-      running:
-          const TaskNotification('Downloading {displayName}.mp3', '{progress}'),
-      // complete:
-      //     const TaskNotification('Download {filename}', 'Download complete'),
-      error: const TaskNotification('Error', '{numFailed}/{numTotal} failed'),
-      progressBar: true,
-    );
+    // FileDownloader().configureNotification(
+    //   // for the 'Download & Open' dog picture
+    //   // which uses 'download' which is not the .defaultGroup
+    //   // but the .await group so won't use the above config
+    //   running:
+    //       const TaskNotification('Downloading {displayName}.mp3', '{progress}'),
+    //   // complete:
+    //   //     const TaskNotification('Download {filename}', 'Download complete'),
+    //   error: const TaskNotification('Error', '{numFailed}/{numTotal} failed'),
+    //   progressBar: true,
+    // );
 
     durationState =
         rxdart.Rx.combineLatest2<Duration, PlaybackEvent, DurationState>(
@@ -745,20 +782,18 @@ class _SongDetailPageState extends ConsumerState<SongDetailPage> {
                                                       lyrics['syncedLyrics']
                                                           .codeUnits))
                                                   .getModel();
-                                          return Expanded(
-                                            child: LyricsReader(
-                                              model: lyricModel,
-                                              position: progress.inMilliseconds
-                                                  .toInt(),
-                                              lyricUi: lyricUI,
-                                              playing: false,
-                                              emptyBuilder: () => const Center(
-                                                child: Text(
-                                                  "No lyrics",
-                                                  style: TextStyle(
-                                                      fontWeight:
-                                                          FontWeight.bold),
-                                                ),
+                                          return LyricsReader(
+                                            model: lyricModel,
+                                            position:
+                                                progress.inMilliseconds.toInt(),
+                                            lyricUi: lyricUI,
+                                            playing: false,
+                                            emptyBuilder: () => const Center(
+                                              child: Text(
+                                                "No lyrics",
+                                                style: TextStyle(
+                                                    fontWeight:
+                                                        FontWeight.bold),
                                               ),
                                             ),
                                           );
